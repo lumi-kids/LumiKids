@@ -1,0 +1,126 @@
+/* =========================================================
+   POSITIONS MANUELLES DES ÉLÉMENTS
+   Ce fichier est chargé APRÈS style.css.
+========================================================= */
+
+/* =========================================================
+   CHAPITRE 1 — A, B, C, D
+========================================================= */
+
+.chapter-one-active #lettersGrid > div:nth-child(1){position:absolute !important;left:19.5% !important;top:14.5% !important;}
+.chapter-one-active #lettersGrid > div:nth-child(2){position:absolute !important;left:50.6% !important;top:33.8% !important;}
+.chapter-one-active #lettersGrid > div:nth-child(3){position:absolute !important;left:25.6% !important;top:49% !important;}
+.chapter-one-active #lettersGrid > div:nth-child(4){position:absolute !important;left:45.7% !important;top:68% !important;}
+.chapter-one-active .chapter3d-chest{right:5.5% !important;top:68% !important;width:25.5% !important;}
+.chapter-one-active .chapter3d-bottom-sign{left:2.2% !important;bottom:2.8% !important;width:28% !important;}
+
+/* =========================================================
+   CHAPITRE 2 — E, I, U
+========================================================= */
+.chapter-two-active #lettersGrid > div:nth-child(1){position:absolute !important;left:73% !important;top:48% !important;width:14% !important;}
+.chapter-two-active #lettersGrid > div:nth-child(2){position:absolute !important;left:55% !important;top:33.5% !important;}
+.chapter-two-active #lettersGrid > div:nth-child(3){position:absolute !important;left:72.6% !important;top:24% !important;width:1% !important;}
+.chapter-two-active .chapter3d-chest{right:70% !important;bottom:10% !important;width:35% !important;}
+.chapter-two-active .chapter3d-progress{left:2.5% !important;right:auto !important;top:3% !important;}
+
+/* =========================================================
+   CHAPITRE 3 — F, J, L, M
+========================================================= */
+.chapter-three-active #lettersGrid > div:nth-child(1){position:absolute !important;left:48.5% !important;top:56% !important;width:15% !important;}
+.chapter-three-active #lettersGrid > div:nth-child(2){position:absolute !important;left:32.1% !important;top:37% !important;}
+.chapter-three-active #lettersGrid > div:nth-child(3){position:absolute !important;left:54% !important;top:25% !important;}
+.chapter-three-active #lettersGrid > div:nth-child(4){position:absolute !important;left:66.85% !important;top:11.5% !important;}
+.chapter-three-active .chapter3d-chest{left:68% !important;bottom:7% !important;width:34% !important;}
+.chapter-three-active .chapter3d-progress{right:73% !important;top:4% !important;}
+
+/* =========================================================
+   CHAPITRE 4 — N, P, Q, R, S, T
+========================================================= */
+.chapter-four-active #lettersGrid > div:nth-child(1){position:absolute!important;left:35.5%!important;top:62%!important;}
+.chapter-four-active #lettersGrid > div:nth-child(2){position:absolute!important;left:54.5%!important;top:46.5%!important;}
+.chapter-four-active #lettersGrid > div:nth-child(3){position:absolute!important;left:69%!important;top:33.5%!important;}
+.chapter-four-active #lettersGrid > div:nth-child(4){position:absolute!important;left:42.5%!important;top:32%!important;}
+.chapter-four-active #lettersGrid > div:nth-child(5){position:absolute!important;left:54.4%!important;top:22%!important;}
+.chapter-four-active #lettersGrid > div:nth-child(6){position:absolute!important;left:72.5%!important;top:17%!important;}
+.chapter-four-active .chapter3d-chest{position:absolute!important;left:67%!important;bottom:8%!important;width:28%!important;}
+.chapter-four-active .chapter3d-progress{left:2.5%!important;right:auto!important;top:3%!important;}
+
+/* =========================================================
+   CHAPITRE 5 — V, W, Z + COFFRE FINAL
+========================================================= */
+.chapter-five-active #lettersGrid > div:nth-child(1){position:absolute!important;left:44%!important;top:61%!important;}
+.chapter-five-active #lettersGrid > div:nth-child(2){position:absolute!important;left:32%!important;top:42%!important;}
+.chapter-five-active #lettersGrid > div:nth-child(3){position:absolute!important;left:64.5%!important;top:50%!important;}
+.chapter-five-active .chapter3d-chest{position:absolute!important;left:54%!important;right:auto!important;bottom:46%!important;width:30%!important;z-index:12!important;}
+.chapter-five-active .chapter3d-chest-secondary{left:36%!important;right:auto!important;bottom:52%!important;width:27%!important;z-index:12!important;}
+.chapter-five-active .chapter3d-progress{left:2.5%!important;right:auto!important;top:3%!important;}
+
+/* =========================================================
+   TAILLE DES BADGES
+========================================================= */
+.chapter3d-node{position:absolute !important;width:11.5% !important;min-width:96px !important;transform:none !important;z-index:9 !important;}
+.chapter3d-node-orb{transform:translateY(-2px) !important;}
+.chapter3d-node button:hover .chapter3d-node-orb{transform:translateY(-10px) scale(1.08) !important;}
+@media(max-width:850px){.chapter3d-node{width:17% !important;}}
+@media(max-width:560px){.chapter3d-node{width:22% !important;min-width:82px !important;}}
+
+/* =========================================================
+   POSITIONS — CINÉMATIQUE FINALE
+   Tu peux modifier librement left/right/top/bottom/width.
+========================================================= */
+.final-character-lumi{width:15%;}
+.final-character-lila{width:14%;}
+.final-character-pico{width:10%;}
+.final-character-noa{width:8%;}
+.final-character-aurore{width:15%;}
+.final-character-orion{width:23%;}
+
+/* Scène 1 : arrivée des cinq héros */
+.final-scene-1 .final-character-lumi{left:22%;bottom:8%;}
+.final-scene-1 .final-character-lila{left:33%;bottom:2%;}
+.final-scene-1 .final-character-pico{left:44%;bottom:8%;}
+.final-scene-1 .final-character-noa{left:47%;top:48%;}
+.final-scene-1 .final-character-aurore{left:50%;bottom:15%;}
+
+/* Scène 2 : Orion accueille */
+.final-scene-2 .final-character-orion{right:12%;bottom:6%;}
+.final-scene-2 .final-character-lumi{left:10%;bottom:7%;}
+.final-scene-2 .final-character-lila{left:25%;bottom:7%;}
+.final-scene-2 .final-character-pico{left:40%;bottom:19%;}
+.final-scene-2 .final-character-noa{left:53%;bottom:28%;}
+.final-scene-2 .final-character-aurore{left:62%;bottom:12%;}
+
+/* Scène 3 : préparation du cercle */
+.final-scene-3 .final-character-orion{left:38%;bottom:8%;width:25%;}
+
+/* Scène 6 : réunion et don des étoiles */
+.final-scene-6 .final-character-orion{left:56%;top:20%;width:22%;}
+.final-scene-6 .final-character-lumi{left:8%;bottom:7%;width:13%;}
+.final-scene-6 .final-character-lila{left:20%;bottom:5%;width:12%;}
+.final-scene-6 .final-character-pico{left:31%;bottom:7%;width:11%;}
+.final-scene-6 .final-character-noa{right:6%;bottom:7%;width:11%;}
+.final-scene-6 .final-character-aurore{right:13%;bottom:7%;width:14%;}
+
+/* Scène 7 : explosion de magie */
+.final-scene-7 .final-character-orion{left:39%;bottom:6%;width:23%;}
+
+/* Scène 8 : tous regardent le ciel */
+.final-scene-8 .final-character-lumi{left:12%;top:64%;width:13%;}
+.final-scene-8 .final-character-lila{left:26.5%;top:69%;width:9%;}
+.final-scene-8 .final-character-pico{left:35%;top:67%;width:11%;}
+.final-scene-8 .final-character-orion{left:41%;bottom:4%;width:21%;}
+.final-scene-8 .final-character-noa{right:29%;top:42%;width:11%;}
+.final-scene-8 .final-character-aurore{right:17%;bottom:1%;width:13%;}
+
+/* Scène 9 : dernier regard */
+.final-scene-9 .final-character-lumi{left:18%;top:64%;width:12%;}
+.final-scene-9 .final-character-lila{left:28%;top:69%;width:9%;}
+.final-scene-9 .final-character-pico{left:40%;top:69%;width:10%;}
+.final-scene-9 .final-character-orion{left:46%;bottom:4%;width:19%;}
+.final-scene-9 .final-character-noa{right:28%;top:50%;width:9%;}
+.final-scene-9 .final-character-aurore{right:16%;top:48%;width:12%;}
+
+@media(max-width:700px){
+  .final-character-lumi,.final-character-lila,.final-character-pico,.final-character-noa,.final-character-aurore{width:18%;}
+  .final-character-orion{width:28%;}
+}

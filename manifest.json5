@@ -1,0 +1,16 @@
+{
+  "name": "LumiKids",
+  "short_name": "LumiKids",
+  "description": "Une application éducative pour apprendre à lire et compter en s'amusant.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#e9f9ef",
+  "theme_color": "#7edb9c",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

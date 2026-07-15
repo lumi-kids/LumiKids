@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LumiKids</title>
+  <meta name="theme-color" content="#7edb9c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LumiKids">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css?v=admin-tools-v1">
+  <link rel="stylesheet" href="style-maths.css?v=maths-addon-v5">
+
+  <link rel="stylesheet" href="positions.css?v=admin-tools-v1">
+
+  <style id="lumikids-settings-v1-2">
+    .top-resources{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:nowrap;
+    }
+
+    .top-icon-action{
+      width:46px;
+      height:46px;
+      min-width:46px;
+      border:0;
+      border-radius:15px;
+      background:#fff;
+      box-shadow:0 10px 25px rgba(35,55,47,.10);
+      display:grid;
+      place-items:center;
+      font-size:20px;
+      cursor:pointer;
+      transition:transform .18s ease, box-shadow .18s ease;
+    }
+
+    .top-icon-action:hover{
+      transform:translateY(-2px);
+      box-shadow:0 14px 28px rgba(35,55,47,.16);
+    }
+
+    .top-icon-action:active{transform:scale(.96);}
+
+    .chapter-round-btn.music{
+      position:absolute !important;
+      right:2.4% !important;
+      top:31% !important;
+      width:58px !important;
+      height:58px !important;
+      min-width:58px !important;
+      min-height:58px !important;
+      padding:0 !important;
+      margin:0 !important;
+      border:0 !important;
+      border-radius:50% !important;
+      display:grid !important;
+      place-items:center !important;
+      cursor:pointer !important;
+      z-index:30 !important;
+      overflow:visible !important;
+      transform:none !important;
+      touch-action:manipulation;
+    }
+
+    .chapter-round-btn.music img{
+      width:100% !important;
+      height:100% !important;
+      display:block !important;
+      object-fit:contain !important;
+      pointer-events:none !important;
+      user-select:none !important;
+    }
+
+    .chapter-round-btn.music::after{
+      content:"";
+      position:absolute;
+      inset:-8px;
+      border-radius:50%;
+    }
+
+    .chapter-round-btn.music.muted{
+      filter:grayscale(.75) brightness(.75);
+      opacity:.72;
+    }
+
+    .lumi-panel-overlay{
+      position:fixed;
+      inset:0;
+      z-index:100000;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      background:rgba(21,31,42,.52);
+      backdrop-filter:blur(9px);
+    }
+
+    .lumi-panel-overlay.hidden{display:none !important;}
+
+    .lumi-settings-panel{
+      width:min(620px, 100%);
+      max-height:min(780px, calc(100vh - 40px));
+      overflow:auto;
+      border-radius:28px;
+      background:#fff;
+      padding:26px;
+      box-shadow:0 28px 80px rgba(15,30,45,.28);
+    }
+
+    .lumi-panel-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:18px;
+      margin-bottom:22px;
+    }
+
+    .lumi-panel-header small{
+      display:block;
+      color:#21945a;
+      font-weight:900;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin-bottom:4px;
+    }
+
+    .lumi-panel-header h2{margin:0;font-size:32px;}
+
+    .lumi-panel-close{
+      width:44px;
+      height:44px;
+      min-width:44px;
+      border:0;
+      border-radius:14px;
+      background:#f1f5f3;
+      font-size:28px;
+      line-height:1;
+      cursor:pointer;
+    }
+
+    .lumi-settings-group{
+      padding:18px;
+      margin:12px 0;
+      border-radius:20px;
+      background:#f6f9f8;
+    }
+
+    .lumi-setting-copy strong,
+    .lumi-name-field span{
+      display:block;
+      font-size:17px;
+      margin-bottom:4px;
+    }
+
+    .lumi-setting-copy span{
+      color:#728078;
+      font-size:14px;
+    }
+
+    .lumi-volume-row{
+      display:grid;
+      grid-template-columns:28px 1fr 58px;
+      align-items:center;
+      gap:12px;
+      margin-top:16px;
+    }
+
+    .lumi-volume-row input{width:100%;cursor:pointer;}
+    .lumi-volume-row output{text-align:right;font-weight:800;}
+
+    .lumi-wide-toggle,
+    .lumi-save-account{
+      width:100%;
+      border:0;
+      border-radius:16px;
+      padding:15px 18px;
+      background:#35ae6f;
+      color:#fff;
+      font-weight:900;
+      cursor:pointer;
+      margin-top:12px;
+    }
+
+    .lumi-wide-toggle.is-muted{background:#e36358;}
+
+    .lumi-settings-note{
+      margin-top:14px;
+      padding:14px 16px;
+      border-radius:16px;
+      background:#eef7ff;
+      color:#536675;
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .lumi-account-avatar{
+      width:92px;
+      height:92px;
+      margin:0 auto 20px;
+      border-radius:28px;
+      display:grid;
+      place-items:center;
+      background:#edfff4;
+      font-size:46px;
+    }
+
+    .lumi-name-field{display:block;}
+
+    .lumi-name-field input{
+      width:100%;
+      box-sizing:border-box;
+      margin-top:8px;
+      padding:14px 16px;
+      border:2px solid #dce8e1;
+      border-radius:15px;
+      font:inherit;
+      outline:none;
+    }
+
+    .lumi-name-field input:focus{border-color:#35ae6f;}
+
+    .lumi-account-stats{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      margin-top:18px;
+    }
+
+    .lumi-account-stats div{
+      padding:15px 10px;
+      border-radius:16px;
+      background:#f6f9f8;
+      text-align:center;
+    }
+
+    .lumi-account-stats small{display:block;color:#77847d;}
+    .lumi-account-stats strong{font-size:22px;}
+
+    .lumi-logout-disabled{
+      width:100%;
+      margin-top:14px;
+      padding:14px;
+      border:0;
+      border-radius:15px;
+      background:#eceeed;
+      color:#9ba19e;
+      font-weight:800;
+    }
+
+    @media(max-width:700px){
+      .top-resources{gap:6px;}
+      .top-resources > span{padding-left:8px !important;padding-right:8px !important;}
+      .top-icon-action{width:40px;height:40px;min-width:40px;border-radius:13px;font-size:17px;}
+      .chapter-round-btn.music{
+        width:50px !important;
+        height:50px !important;
+        min-width:50px !important;
+        min-height:50px !important;
+      }
+      .lumi-settings-panel{padding:20px;border-radius:22px;}
+      .lumi-panel-header h2{font-size:27px;}
+    }
+  </style>
+
+</head>
+<body>
+  <div class="sky-decoration sky-one"></div>
+  <div class="sky-decoration sky-two"></div>
+
+  <main class="app">
+    <section class="card game-shell">
+      <header class="top-header game-header">
+        <button class="brand-button" onclick="showHome()">
+          <div class="mascot"><img src="images/interface/mascot.png" alt="Mascotte"></div>
+          <div>
+            <p class="badge">Apprendre en jouant</p>
+            <h1>LumiKids</h1>
+          </div>
+        </button>
+
+        <div class="top-resources">
+          <button id="storyBookButton" class="storybook-top-button hidden" onclick="openUnlockedStoryBook()" aria-label="Ouvrir le Grand Livre">
+            <img src="images/livre/icone_livre.png" alt="">
+          </button>
+          <span>⭐ <b id="globalStars">0</b></span>
+          <span>💰 <b id="globalCoins">0</b></span>
+
+          <button id="settingsTopButton" class="top-icon-action" onclick="openSettingsPanel()" aria-label="Ouvrir les paramètres" title="Paramètres">
+            ⚙️
+          </button>
+
+          <button id="accountTopButton" class="top-icon-action account-action" onclick="openAccountPanel()" aria-label="Ouvrir le compte" title="Compte">
+            👤
+          </button>
+        </div>
+      </header>
+
+      <div id="homeScreen" class="screen">
+        <section class="hero-v3">
+          <div class="hero-copy">
+            <p class="eyebrow">Bonjour <span id="childNameHome">Champion</span> !</p>
+            <h2>Prêt à apprendre<br>en t’amusant ?</h2>
+            <p>Choisis une activité, gagne des étoiles et progresse de niveau.</p>
+            <button class="continue-button" onclick="continueLearning()">Continuer <span>→</span></button>
+          </div>
+          <div class="hero-mascot">
+            <img src="images/interface/mascot.png" alt="">
+            <span>On joue ?</span>
+          </div>
+        </section>
+
+        <section class="level-panel">
+          <div class="level-circle"><small>Niveau</small><strong id="homeLevel">1</strong></div>
+          <div class="level-main">
+            <div class="level-line"><span id="homeXpText">0 / 100 XP</span><b id="homeProgressPercent">0%</b></div>
+            <div class="xp-track"><div id="homeXpBar"></div></div>
+          </div>
+          <div class="streak-box">🔥 <strong id="homeStreak">1</strong><small>jour</small></div>
+        </section>
+
+        <div class="home-title">
+          <div><p class="eyebrow">Mes activités</p><h2>Choisis ton univers</h2></div>
+        </div>
+
+        <div class="activity-grid-v3">
+          <button class="activity-v3 reading-v3" onclick="showReadingHome()">
+            <span class="activity-image"><img src="images/interface/reading.png" alt=""></span>
+            <span><small>Univers lecture</small><strong>Lecture</strong><em>Lettres, sons, syllabes et mots</em></span>
+            <b>→</b>
+          </button>
+
+          <button class="activity-v3 maths-v3" onclick="showMath()">
+            <span class="activity-image"><img src="images/interface/math.png" alt=""></span>
+            <span><small>Univers maths</small><strong>Calculs</strong><em>Additions et nombres mystères</em></span>
+            <b>→</b>
+          </button>
+
+          <button class="activity-v3 rewards-v3" onclick="showRewards()">
+            <span class="activity-symbol">★</span>
+            <span><small>Ma collection</small><strong>Récompenses</strong><em>Succès et trophées</em></span>
+            <b>→</b>
+          </button>
+
+          <button id="mistakeReviewHomeButton" class="activity-v3 mistakes-v3" onclick="showMistakeReview()">
+            <span class="activity-symbol">↻</span>
+            <span><small>Je progresse</small><strong>Refaire mes erreurs</strong><em><span id="homeMistakeCount">0 erreur</span> à corriger</em></span>
+            <b>→</b>
+          </button>
+
+          <button class="activity-v3 world-map-v3" onclick="showWorldMap()">
+            <span class="activity-symbol">🗺️</span>
+            <span><small>Mon aventure</small><strong>Carte des royaumes</strong><em>Voir toute ma progression</em></span>
+            <b>→</b>
+          </button>
+
+          <button class="activity-v3 parents-v3" onclick="showParentDashboard()">
+            <span class="activity-symbol">↗</span>
+            <span><small>Espace sécurisé</small><strong>Parents</strong><em>Progrès et statistiques</em></span>
+            <b>→</b>
+          </button>
+        </div>
+
+        <button id="dailyChallengeCard" class="daily-challenge" onclick="claimDailyChallenge()">
+          <div id="dailyRewardBadge" class="daily-check reward-badge">🪙 5</div>
+          <div>
+            <small>Défi du jour</small>
+            <strong id="dailyChallengeText">Réussis 5 exercices</strong>
+            <div class="daily-track"><div id="dailyChallengeBar"></div></div>
+            <span id="dailyChallengeStatus" class="daily-status">0/5</span>
+          </div>
+          <b id="dailyChallengeAction">En cours</b>
+        </button>
+
+        <!-- =========================================================
+             OUTILS ADMINISTRATEUR TEMPORAIRES
+             À retirer ou désactiver avant la sortie publique.
+        ========================================================== -->
+        <section id="adminToolsPanel" class="admin-tools-panel">
+          <div class="admin-tools-heading">
+            <div>
+              <small>Outils administrateur temporaires</small>
+              <strong>Tests rapides des royaumes</strong>
+              <p id="adminToolsStatus">Accès verrouillé — code requis.</p>
+            </div>
+            <span id="adminLockBadge" class="admin-lock-badge">🔒</span>
+          </div>
+
+          <div id="adminLockedActions" class="admin-tools-actions">
+            <button class="admin-unlock-button" onclick="openAdminCodeModal()">
+              Déverrouiller les outils
+            </button>
+          </div>
+
+          <div id="adminUnlockedActions" class="admin-tools-actions hidden">
+            <button onclick="adminCompleteCurrentWorld()">Valider le monde actuel</button>
+            <button onclick="adminCompleteAllWorlds()">Valider tout le jeu</button>
+            <button class="admin-remove-button" onclick="adminRevokeAccess()">Retirer les droits</button>
+          </div>
+        </section>
+
+        <section class="beta-tools">
+          <div>
+            <small>Outil de bêta-test</small>
+            <strong>Recommencer depuis le début</strong>
+            <p>Efface le niveau, les étoiles, les pièces et toute la progression.</p>
+          </div>
+          <button class="beta-reset-button" onclick="resetBetaProgress()">Réinitialiser</button>
+        </section>
+      </div>
+
+      <div id="mathGame" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showHome()">← Accueil</button>
+          <div><p class="eyebrow">Univers maths</p><h2>Défi calcul</h2></div>
+        </div>
+        <div class="game-panel-v3">
+          <div class="progress-box"><div id="progressBar" class="progress-bar"></div></div>
+          <div class="stats"><div><span id="score">0</span><p>Bonnes réponses</p></div><div><span id="total">0</span><p>Questions</p></div></div>
+          <div id="questionZone" class="question-zone"><small id="questionLabel">À toi de jouer</small><div id="question" class="question">5 + 3 = ?</div></div>
+          <input id="answer" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="Ta réponse" autocomplete="off">
+          <div id="message" class="message"></div>
+          <div id="mathActionButtons" class="buttons"><button id="validateBtn" class="btn primary" onclick="checkAnswer()">Valider</button><button id="stopBtn" class="btn stop" onclick="stopGame()">Terminer</button></div>
+          <button id="replayBtn" class="btn replay hidden" onclick="replayGame()">Rejouer</button>
+          <div id="finalResult" class="final-result"></div>
+        </div>
+      </div>
+
+      <div id="readingHome" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showHome()">← Accueil</button>
+          <div><p class="eyebrow">Univers lecture</p><h2>Que veux-tu apprendre ?</h2></div>
+        </div>
+
+        <div class="reading-menu-v3">
+          <button onclick="showLettersHome()"><span class="reading-icon">Aa</span><span><small>Parcours 1</small><strong>Les lettres</strong><em>Sons, syllabes, mots et phrases</em></span><b>→</b></button>
+          <button onclick="showSoundsHome()"><span class="reading-icon blue">ch</span><span><small>Parcours 2</small><strong>Les sons composés</strong><em>AN, ON, OU, CH, OI et plus</em></span><b>→</b></button>
+        </div>
+      </div>
+
+      <div id="lettersHome" class="screen hidden">
+        <div class="page-heading adventure-heading">
+          <button class="back-btn" onclick="showReadingHome()">← Lecture</button>
+          <div>
+            <p id="chapterHeadingNumber" class="eyebrow">Chapitre 1</p>
+            <h2 id="chapterHeadingTitle">La Clairière des Premières Lettres</h2>
+          </div>
+        </div>
+
+        <nav class="chapter-rail" aria-label="Choisir un chapitre">
+          <button id="chapterTab1" class="chapter-tab active" onclick="showLetterChapter(1)">
+            <span>1</span>
+            <strong>Clairière</strong>
+          </button>
+
+          <button id="chapterTab2" class="chapter-tab locked" onclick="enterChapterWithStory(2)">
+            <span>2</span>
+            <strong>Jardins</strong>
+          </button>
+
+          <button id="chapterTab3" class="chapter-tab locked" onclick="enterChapterWithStory(3)">
+            <span>3</span>
+            <strong>Vallée</strong>
+          </button>
+
+          <button id="chapterTab4" class="chapter-tab locked" onclick="enterChapterWithStory(4)">
+            <span>4</span>
+            <strong>Lucioles</strong>
+          </button>
+
+          <button id="chapterTab5" class="chapter-tab locked" onclick="enterChapterWithStory(5)">
+            <span>5</span>
+            <strong>Étoiles</strong>
+          </button>
+        </nav>
+
+        <section id="chapterOneMap" class="chapter3d-map chapter-one-active">
+          <div class="chapter3d-scene">
+            <div id="chapterBackground" class="chapter3d-bg"></div>
+            <div class="chapter3d-vignette"></div>
+            <div class="chapter3d-light"></div>
+<section class="chapter3d-progress">
+              <div class="chapter3d-progress-copy">
+                <small>Progression du chapitre</small>
+                <strong id="lettersProgressText">0 lettre maîtrisée sur 4</strong>
+              </div>
+              <div id="chapterProgressDots" class="chapter3d-dots" aria-hidden="true">
+                <span data-progress-dot="0"></span>
+                <span data-progress-dot="1"></span>
+                <span data-progress-dot="2"></span>
+                <span data-progress-dot="3"></span>
+              </div>
+              <div class="chapter3d-track"><div id="lettersProgressBar"></div></div>
+            </section>
+
+            <button id="chapterMusicBtn" class="chapter-round-btn music" onclick="toggleChapterMusic()" aria-label="Activer ou désactiver la musique">
+              <img id="chapterMusicImage" src="images/chap1/btn_musique.png" alt="">
+            </button>
+
+            <div id="lettersGrid" class="chapter3d-nodes"></div>
+
+            <img
+              id="chapterBottomSign" class="chapter3d-bottom-sign"
+              src="images/chap1/panneau_coffre_01.png"
+              alt=""
+            >
+
+            <section id="chapterChestZone" class="chapter3d-chest">
+              <button class="chapter3d-chest-button" onclick="openChapterChest()" aria-label="Ouvrir le coffre du chapitre">
+                <img id="chapterChestImage" src="images/chap1/coffre_fermé_02.png" alt="Coffre du chapitre">
+              </button>
+              <p id="chapterChestText">Termine A, B, C et D pour l’ouvrir.</p>
+            </section>
+
+            <section id="chapterSecondChestZone" class="chapter3d-chest chapter3d-chest-secondary hidden">
+              <button class="chapter3d-chest-button" onclick="openSecondChapterChest()" aria-label="Ouvrir le deuxième coffre du Royaume des Étoiles">
+                <img id="chapterSecondChestImage" src="images/chap5/coffre_fermé_02.png" alt="Deuxième coffre du chapitre 5">
+              </button>
+              <p id="chapterSecondChestText">Termine V, W et Z pour l’ouvrir.</p>
+            </section>
+
+
+            <button id="nextChapterButton" class="next-chapter-button hidden" onclick="enterChapterWithStory(2)">
+              <small>Nouveau monde débloqué</small>
+              <strong>Entrer dans les Jardins des Voyelles</strong>
+              <span>→</span>
+            </button>
+
+            <div class="chapter3d-sparkles" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="soundsHome" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showReadingHome()">← Lecture</button>
+          <div><p class="eyebrow">Parcours des sons</p><h2>Choisis un son</h2></div>
+        </div>
+        <div id="soundsLockPanel" class="sounds-lock-panel hidden">
+          <div class="lock-orb"><span class="css-lock-icon" aria-hidden="true"></span></div>
+          <h3>Parcours encore verrouillé</h3>
+          <p>Termine toutes les lettres pour ouvrir le chemin des sons composés.</p>
+          <div class="lock-progress"><div id="soundsUnlockBar"></div></div>
+          <strong id="soundsUnlockText">0 / 14 lettres</strong>
+        </div>
+        <div id="soundsGrid" class="lesson-grid"></div>
+      </div>
+
+      <div id="lessonScreen" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="backToLessonList()">← Retour</button>
+          <div><p class="eyebrow">Leçon en cours</p><h2 id="lessonTitle">Leçon</h2></div>
+          <span class="mastery-pill">⭐ <b id="lessonMastery">0%</b></span>
+        </div>
+
+        <div class="lesson-title-box">
+          <div class="lesson-icon big"><img id="lessonImage" src="" alt=""></div>
+          <div><h2 id="lessonTitleMirror">Découverte</h2><p id="lessonSubtitle" class="subtitle"></p></div>
+        </div>
+
+        <div id="lessonTabs" class="lesson-tabs"></div>
+        <div id="lessonContent"></div>
+      </div>
+
+      <div id="rewardsScreen" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showHome()">← Accueil</button>
+          <div><p class="eyebrow">Ma collection</p><h2>Récompenses</h2></div>
+        </div>
+        <div class="wallet-v3"><div><small>Mon trésor</small><strong><span id="rewardsCoins">0</span> pièces</strong></div><span>⭐ <b id="rewardsStars">0</b></span></div>
+        <div id="achievementsGrid" class="achievement-grid"></div>
+      </div>
+
+      <div id="mistakeReviewScreen" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showHome()">← Accueil</button>
+          <div><p class="eyebrow">Je progresse</p><h2>Refaire mes erreurs</h2></div>
+          <span class="mastery-pill">⭐ <b id="mistakeRecoveredCount">0</b></span>
+        </div>
+
+        <section class="mistake-summary-card">
+          <div>
+            <small>Questions à revoir</small>
+            <strong id="mistakeReviewCount">0 erreur</strong>
+            <p>Chaque erreur corrigée disparaît définitivement de cette liste.</p>
+          </div>
+          <div class="mistake-summary-orb">↻</div>
+        </section>
+
+        <div id="mistakeReviewContent" class="mistake-review-content"></div>
+      </div>
+
+
+      <div id="worldMapScreen" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showHome()">← Accueil</button>
+          <div>
+            <p class="eyebrow">Mon aventure</p>
+            <h2>Carte des royaumes</h2>
+          </div>
+          <span class="mastery-pill">⭐ <b id="worldMapStars">0</b></span>
+        </div>
+
+        <section class="world-map-summary">
+          <article>
+            <small>Royaumes terminés</small>
+            <strong id="worldMapCompleted">0 / 5</strong>
+          </article>
+          <article>
+            <small>Étoiles uniques</small>
+            <strong id="worldMapUniqueStars">0</strong>
+          </article>
+          <article>
+            <small>Erreurs à corriger</small>
+            <strong id="worldMapMistakes">0</strong>
+          </article>
+          <article>
+            <small>Données à Orion</small>
+            <strong id="worldMapOrionStars">0</strong>
+          </article>
+        </section>
+
+        <section id="worldMapPath" class="world-map-path" aria-label="Progression dans les royaumes"></section>
+      </div>
+
+      <div id="parentScreen" class="screen hidden">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showHome()">← Accueil</button>
+          <div><p class="eyebrow">Espace parent</p><h2>Tableau de bord</h2></div>
+        </div>
+
+        <div class="parent-profile">
+          <div><small>Profil enfant</small><h3 id="parentChildName">Champion</h3><p>Niveau <span id="parentLevel">1</span> · Série de <span id="parentStreak">1</span> jour</p></div>
+          <button onclick="editChildName()">Modifier</button>
+        </div>
+
+        <div class="parent-stat-grid">
+          <article><span>⭐</span><strong id="parentTotalStars">0</strong><small>étoiles gagnées</small></article>
+          <article><span>✓</span><strong id="parentCorrect">0</strong><small>bonnes réponses</small></article>
+          <article><span>◎</span><strong id="parentQuestions">0</strong><small>exercices</small></article>
+          <article><span>📚</span><strong id="parentLettersMastered">0 / 14</strong><small>lettres maîtrisées</small></article>
+        </div>
+
+        <div class="parent-progress-card">
+          <div><small>Réussite globale</small><strong id="parentAccuracy">0%</strong></div>
+          <span id="parentEncouragement">Continue comme ça !</span>
+          <div class="accuracy-track"><div id="parentAccuracyBar"></div></div>
+        </div>
+      </div>
+    </section>
+      <!-- =========================================================
+           PARAMÈTRES AUDIO ET COMPTE
+      ========================================================== -->
+      <div id="settingsPanel" class="lumi-panel-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsPanelTitle">
+        <section class="lumi-settings-panel">
+          <header class="lumi-panel-header">
+            <div>
+              <small>Réglages de LumiKids</small>
+              <h2 id="settingsPanelTitle">Paramètres</h2>
+            </div>
+            <button class="lumi-panel-close" onclick="closeSettingsPanel()" aria-label="Fermer">×</button>
+          </header>
+
+          <div class="lumi-settings-group">
+            <div class="lumi-setting-copy">
+              <strong>Musique de l’accueil</strong>
+              <span>Accueil, récompenses, carte, parents et menus.</span>
+            </div>
+            <div class="lumi-volume-row">
+              <span>🔈</span>
+              <input id="menuVolumeSlider" type="range" min="0" max="100" step="1" value="22" oninput="changeLumiVolume('menu', this.value)">
+              <output id="menuVolumeValue">22 %</output>
+            </div>
+          </div>
+
+          <div class="lumi-settings-group">
+            <div class="lumi-setting-copy">
+              <strong>Ambiance des royaumes</strong>
+              <span>Forêt, jardins, montagne, lucioles et étoiles.</span>
+            </div>
+            <div class="lumi-volume-row">
+              <span>🌳</span>
+              <input id="worldVolumeSlider" type="range" min="0" max="100" step="1" value="28" oninput="changeLumiVolume('world', this.value)">
+              <output id="worldVolumeValue">28 %</output>
+            </div>
+          </div>
+
+          <div class="lumi-settings-group">
+            <div class="lumi-setting-copy">
+              <strong>Effets sonores</strong>
+              <span>Réponses, coffres, étoiles, livre et boutons.</span>
+            </div>
+            <div class="lumi-volume-row">
+              <span>✨</span>
+              <input id="effectsVolumeSlider" type="range" min="0" max="100" step="1" value="72" oninput="changeLumiVolume('effects', this.value)">
+              <output id="effectsVolumeValue">72 %</output>
+            </div>
+          </div>
+
+          <button id="globalMusicToggle" class="lumi-wide-toggle" onclick="toggleAllBackgroundMusic()">
+            Couper toutes les musiques de fond
+          </button>
+
+          <div class="lumi-settings-note">
+            Les leçons et exercices de lecture restent silencieux pour que les sons, mots et consignes soient bien audibles.
+          </div>
+        </section>
+      </div>
+
+      <div id="accountPanel" class="lumi-panel-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="accountPanelTitle">
+        <section class="lumi-settings-panel lumi-account-panel">
+          <header class="lumi-panel-header">
+            <div>
+              <small>Profil local</small>
+              <h2 id="accountPanelTitle">Compte</h2>
+            </div>
+            <button class="lumi-panel-close" onclick="closeAccountPanel()" aria-label="Fermer">×</button>
+          </header>
+
+          <div class="lumi-account-avatar">🦊</div>
+
+          <label class="lumi-name-field">
+            <span>Pseudo de l’enfant</span>
+            <input id="accountNameInput" type="text" maxlength="18" autocomplete="off">
+          </label>
+
+          <button class="lumi-save-account" onclick="saveAccountName()">Enregistrer le pseudo</button>
+
+          <div class="lumi-account-stats">
+            <div><small>Niveau</small><strong id="accountLevelValue">1</strong></div>
+            <div><small>Étoiles</small><strong id="accountStarsValue">0</strong></div>
+            <div><small>Pièces</small><strong id="accountCoinsValue">0</strong></div>
+          </div>
+
+          <div class="lumi-settings-note">
+            Pour l’instant, LumiKids utilise un profil enregistré uniquement sur cet appareil. La connexion en ligne et la vraie déconnexion seront ajoutées avec le système de comptes.
+          </div>
+
+          <button class="lumi-logout-disabled" type="button" disabled>Déconnexion bientôt disponible</button>
+        </section>
+      </div>
+
+  </main>
+
+  <div id="levelUpModal" class="level-modal hidden">
+    <div><span class="big-star">★</span><p class="eyebrow">Nouveau niveau</p><h2>Bravo !</h2><p>Tu passes au niveau <b id="newLevelValue">2</b>.</p><button class="btn primary" onclick="closeLevelUp()">Continuer</button></div>
+  </div>
+
+
+  <!-- GRAND LIVRE : AJOUT UNIQUEMENT -->
+  <div id="storybookTransition" class="storybook-transition hidden" aria-hidden="true">
+    <div class="storybook-clouds" aria-hidden="true">
+      <img class="story-cloud cloud-1" src="images/effets/nuage_01.png" alt="">
+      <img class="story-cloud cloud-2" src="images/effets/nuage_02.png" alt="">
+      <img class="story-cloud cloud-3" src="images/effets/nuage_03.png" alt="">
+      <img class="story-cloud cloud-4" src="images/effets/nuage_04.png" alt="">
+      <img class="story-cloud cloud-5" src="images/effets/nuage_05.png" alt="">
+      <img class="story-cloud cloud-6" src="images/effets/nuage_06.png" alt="">
+    </div>
+
+    <img id="storybookClosedBook" class="storybook-book storybook-book-closed" src="images/livre/livre_ferme.png" alt="Grand Livre fermé">
+    <img id="storybookOpenBook" class="storybook-book storybook-book-open" src="images/livre/livre_ouvert_magique.png" alt="Grand Livre ouvert">
+    <img class="storybook-magic storybook-dust" src="images/effets/poussiere_magique.png" alt="">
+    <img class="storybook-magic storybook-teleport" src="images/effets/teleportation_magique.png" alt="">
+
+    <section id="storybookPages" class="storybook-pages" aria-label="Grand Livre des Étoiles">
+      <img id="storybookPageBackground" class="storybook-page-background" src="images/livre/histoire_chap1.png" alt="Illustration de l’histoire">
+      <div class="storybook-copy">
+        <p class="storybook-kicker">Le Grand Livre des Étoiles</p>
+        <h2 id="storybookTitle">La Clairière retrouvée</h2>
+        <p id="storybookStarsLine" class="storybook-stars-line"></p>
+        <div id="storybookText" class="storybook-text"></div>
+        <div class="storybook-page-navigation">
+          <button id="storybookPreviousPage" class="storybook-page-arrow" onclick="changeStoryPage(-1)" aria-label="Page précédente">←</button>
+          <span id="storybookPageIndicator">Page 1 / 1</span>
+          <button id="storybookNextPage" class="storybook-page-arrow" onclick="changeStoryPage(1)" aria-label="Page suivante">→</button>
+        </div>
+        <div class="storybook-actions">
+          <button id="storybookReadButton" class="storybook-action secondary" onclick="readCurrentStory()">▶ Écouter</button>
+          <button id="storybookContinueButton" class="storybook-action primary" onclick="continueFromStoryBook()">Continuer l’aventure →</button>
+          <button id="storybookCloseButton" class="storybook-action ghost" onclick="closeStoryBook(false)">Fermer</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div
+    id="kingdomWelcome"
+    class="kingdom-welcome hidden"
+    aria-live="polite"
+    role="button"
+    tabindex="0"
+    aria-label="Bienvenue dans le nouveau royaume"
+  >
+    <img id="kingdomWelcomeEffect" src="images/effets/petales_roses.png" alt="">
+    <small id="kingdomWelcomeSmall">🌸 Bienvenue dans 🌸</small>
+    <strong id="kingdomWelcomeTitle">Les Jardins des Voyelles</strong>
+    <p id="kingdomWelcomeText">🐰 Viens aider <b>Lila la lapine</b> à retrouver les étoiles tombées dans son royaume et à réveiller les fleurs magiques ! ✨⭐</p>
+    <span id="kingdomWelcomeSkip" class="kingdom-welcome-skip">Appuie n’importe où pour continuer</span>
+  </div>
+
+
+
+  <!-- =====================================================
+       HUB HISTOIRE + CINÉMATIQUE FINALE
+  ====================================================== -->
+  <section id="storyHub" class="story-hub hidden" aria-modal="true" role="dialog" aria-labelledby="storyHubTitle">
+    <div class="story-hub-card">
+      <button class="story-hub-close" onclick="closeStoryHub()" aria-label="Fermer">×</button>
+      <img src="images/livre/icone_livre.png" alt="" class="story-hub-icon">
+      <small>Les aventures de LumiKids</small>
+      <h2 id="storyHubTitle">Que veux-tu revoir ?</h2>
+      <div class="story-hub-actions">
+        <button onclick="openStoryBookFromHub()">
+          <span>📖</span><strong>Le Grand Livre</strong><small>Revoir les pages débloquées</small>
+        </button>
+        <button id="storyHubFinalButton" onclick="startFinalCinematic(true)">
+          <span>✨</span><strong>La grande fin</strong><small>Revoir le retour des étoiles</small>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section id="finalCinematic" class="final-cinematic hidden" aria-modal="true" role="dialog" aria-label="Cinématique finale">
+    <div id="finalScene" class="final-scene final-scene-1">
+      <img id="finalBackground" class="final-background" src="images/Fin/image 1.png" alt="">
+      <div id="finalFade" class="final-fade"></div>
+      <div id="finalMagicGlow" class="final-magic-glow" aria-hidden="true"></div>
+      <div id="finalStarsLayer" class="final-stars-layer" aria-hidden="true"></div>
+
+      <div id="finalCharacters" class="final-characters" aria-hidden="true">
+        <img id="finalLumi" class="final-character final-character-lumi" alt="Lumi">
+        <img id="finalLila" class="final-character final-character-lila" alt="Lila">
+        <img id="finalPico" class="final-character final-character-pico" alt="Pico">
+        <img id="finalNoa" class="final-character final-character-noa" alt="Noa">
+        <img id="finalAurore" class="final-character final-character-aurore" alt="Aurore">
+        <img id="finalOrion" class="final-character final-character-orion" alt="Orion">
+      </div>
+
+      <button class="final-close-button" onclick="closeFinalCinematic()" aria-label="Quitter la cinématique">×</button>
+      <button class="final-skip-button" onclick="skipFinalCinematic()">Passer</button>
+
+      <div id="finalDialogue" class="final-dialogue">
+        <small id="finalSpeaker">Narrateur</small>
+        <p id="finalDialogueText">Les cinq amis arrivent enfin au Royaume des Étoiles…</p>
+      </div>
+
+      <div id="finalDonationPanel" class="final-donation-panel hidden">
+        <p>Les étoiles attendent de retrouver le ciel.</p>
+        <strong>⭐ <span id="finalAvailableStars">0</span> étoile(s) disponible(s)</strong>
+        <button id="finalDonateButton" onclick="donateStarsToOrion()">Donner mes étoiles à Orion</button>
+        <small id="finalDonationTotal">0 étoile confiée à Orion</small>
+      </div>
+
+      <button id="finalNextButton" class="final-next-button" onclick="nextFinalScene()">
+        Continuer <span>→</span>
+      </button>
+    </div>
+  </section>
+
+  <div id="rewardAnimationLayer" class="reward-animation-layer"></div>
+  <div id="toast" class="toast hidden"></div>
+  <div id="confettiBox"></div>
+
+  <script src="script.js?v=audio-v1-5"></script>
+    <script src="script-maths.js?v=audio-v1"></script>
+<script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js");
+    }
+  </script>
+
+  <!-- Clavier numérique administrateur temporaire -->
+  <div id="adminCodeModal" class="admin-code-overlay hidden" aria-hidden="true">
+    <section class="admin-code-modal" role="dialog" aria-modal="true" aria-labelledby="adminCodeTitle">
+      <button class="admin-code-close" onclick="closeAdminCodeModal()" aria-label="Fermer">×</button>
+      <div class="admin-code-icon">🔐</div>
+      <small>Accès administrateur</small>
+      <h2 id="adminCodeTitle">Entre le code à 4 chiffres</h2>
+      <p>Ce code déverrouille uniquement les outils de test.</p>
+
+      <div id="adminCodeDots" class="admin-code-dots" aria-label="Code saisi">
+        <span></span><span></span><span></span><span></span>
+      </div>
+
+      <div id="adminCodeMessage" class="admin-code-message"></div>
+
+      <div class="admin-number-pad">
+        <button onclick="adminTypeDigit('1')">1</button>
+        <button onclick="adminTypeDigit('2')">2</button>
+        <button onclick="adminTypeDigit('3')">3</button>
+        <button onclick="adminTypeDigit('4')">4</button>
+        <button onclick="adminTypeDigit('5')">5</button>
+        <button onclick="adminTypeDigit('6')">6</button>
+        <button onclick="adminTypeDigit('7')">7</button>
+        <button onclick="adminTypeDigit('8')">8</button>
+        <button onclick="adminTypeDigit('9')">9</button>
+        <button class="admin-pad-secondary" onclick="adminClearCode()">Effacer</button>
+        <button onclick="adminTypeDigit('0')">0</button>
+        <button class="admin-pad-validate" onclick="adminValidateCode()">Valider</button>
+      </div>
+    </section>
+  </div>
+
+</body>
+</html>
