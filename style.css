@@ -4791,3 +4791,140 @@ body{
     height:37px !important;
   }
 }
+
+/* =========================================================
+   CORRECTIF MOBILE V6 — BOUTON NOUVEAU MONDE + GRAND LIVRE
+========================================================= */
+@media(max-width:700px){
+  /* Le bandeau violet ne doit plus masquer les lettres et le coffre. */
+  .next-chapter-button{
+    left:50% !important;
+    bottom:1.4% !important;
+    width:54% !important;
+    min-height:0 !important;
+    padding:7px 10px !important;
+    border-radius:14px !important;
+    grid-template-columns:1fr auto !important;
+    column-gap:7px !important;
+  }
+
+  .next-chapter-button small{
+    font-size:6px !important;
+    line-height:1.05 !important;
+    letter-spacing:.07em !important;
+  }
+
+  .next-chapter-button strong{
+    margin-top:2px !important;
+    font-size:clamp(9px,2.55vw,12px) !important;
+    line-height:1.15 !important;
+  }
+
+  .next-chapter-button span{
+    font-size:22px !important;
+  }
+
+  /* Livre : on garde l'illustration visible et on évite le gros pavé
+     qui recouvre presque toute la page et les boutons du bas. */
+  .storybook-pages{
+    width:100vw !important;
+    height:100svh !important;
+    min-height:100svh !important;
+    aspect-ratio:auto !important;
+    overflow:hidden !important;
+    background:#f3dfb5 !important;
+  }
+
+  .storybook-page-background{
+    object-fit:cover !important;
+    object-position:center top !important;
+  }
+
+  .storybook-copy{
+    top:auto !important;
+    left:5% !important;
+    right:5% !important;
+    bottom:max(9%, env(safe-area-inset-bottom, 0px)) !important;
+    width:90% !important;
+    height:auto !important;
+    max-height:50svh !important;
+    padding:14px 15px 12px !important;
+    border-radius:19px !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain !important;
+    background:rgba(255,239,203,.93) !important;
+    box-shadow:0 12px 28px rgba(50,29,17,.24) !important;
+  }
+
+  .storybook-kicker{
+    font-size:8px !important;
+  }
+
+  .storybook-copy h2{
+    margin:5px 0 6px !important;
+    font-size:clamp(21px,6.1vw,28px) !important;
+    line-height:1.04 !important;
+  }
+
+  .storybook-stars-line{
+    margin-bottom:8px !important;
+    font-size:12px !important;
+  }
+
+  .storybook-text{
+    flex:none !important;
+    font-size:clamp(12px,3.5vw,15px) !important;
+    line-height:1.45 !important;
+  }
+
+  .storybook-text p+p{
+    margin-top:.55em !important;
+  }
+
+  .storybook-page-navigation{
+    gap:9px !important;
+    margin:8px 0 2px !important;
+    font-size:10px !important;
+  }
+
+  .storybook-page-arrow{
+    width:29px !important;
+    height:29px !important;
+    font-size:15px !important;
+  }
+
+  .storybook-actions{
+    gap:6px !important;
+    margin-top:8px !important;
+  }
+
+  .storybook-action{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    padding:8px 9px !important;
+    border-radius:11px !important;
+    font-size:10px !important;
+  }
+}
+
+@media(max-width:390px){
+  .next-chapter-button{
+    width:58% !important;
+  }
+
+  .storybook-copy{
+    left:4% !important;
+    right:4% !important;
+    width:92% !important;
+    max-height:47svh !important;
+    padding:12px 13px 10px !important;
+  }
+
+  .storybook-copy h2{
+    font-size:21px !important;
+  }
+
+  .storybook-text{
+    font-size:12px !important;
+  }
+}

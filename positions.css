@@ -265,3 +265,61 @@
     max-width:40% !important;
   }
 }
+
+/* =========================================================
+   CORRECTIF MOBILE V6 — PANNEAU DE PROGRESSION
+   Encore plus compact et réellement collé au coin droit.
+========================================================= */
+@media(max-width:700px){
+  .chapter-one-active .chapter3d-progress,
+  .chapter-two-active .chapter3d-progress,
+  .chapter-three-active .chapter3d-progress,
+  .chapter-four-active .chapter3d-progress,
+  .chapter-five-active .chapter3d-progress{
+    left:auto !important;
+    right:1.2% !important;
+    top:2% !important;
+    width:29% !important;
+    max-width:29% !important;
+    min-width:0 !important;
+    padding:5px 7px !important;
+    border-radius:12px !important;
+  }
+
+  .chapter3d-progress-copy strong{
+    margin-top:1px !important;
+    font-size:clamp(8px,2.2vw,11px) !important;
+    line-height:1.08 !important;
+  }
+
+  .chapter3d-progress-copy small{
+    font-size:clamp(5px,1.55vw,7px) !important;
+    line-height:1.05 !important;
+  }
+
+  .chapter3d-dots{
+    gap:3px !important;
+    margin:4px 0 4px !important;
+  }
+
+  .chapter3d-dots span{
+    width:clamp(8px,2.35vw,13px) !important;
+    height:clamp(8px,2.35vw,13px) !important;
+    border-width:2px !important;
+  }
+
+  .chapter3d-track{
+    height:4px !important;
+  }
+}
+
+@media(max-width:390px){
+  .chapter-one-active .chapter3d-progress,
+  .chapter-two-active .chapter3d-progress,
+  .chapter-three-active .chapter3d-progress,
+  .chapter-four-active .chapter3d-progress,
+  .chapter-five-active .chapter3d-progress{
+    width:31% !important;
+    max-width:31% !important;
+  }
+}
