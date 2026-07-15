@@ -4306,6 +4306,11 @@ if (gameState.openedSecondChapterChests?.[5]) {
     return id;
   }
 
+  /* Rend la fonction disponible aux correctifs chargés plus loin
+     dans ce même fichier. Sans cela, leur bloc try/catch masquait
+     une ReferenceError et l'erreur n'était jamais sauvegardée. */
+  window.rememberMistake = rememberMistake;
+
   function resolveMistake(id){
     ensureUniqueRewardState();
     const mistake = gameState.mistakes[id];
@@ -5868,7 +5873,7 @@ if (gameState.openedSecondChapterChests?.[5]) {
           item => item.syllable === selectedSound
         );
 
-        rememberMistake({
+        window.rememberMistake?.({
           kind: "match",
           lessonType: "letter",
           lessonKey: currentLesson.key,
