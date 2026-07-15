@@ -4372,6 +4372,10 @@ if (gameState.openedSecondChapterChests?.[5]) {
     hideAllScreens();
     document.getElementById("mistakeReviewScreen")?.classList.remove("hidden");
     renderMistakeList();
+
+    /* L'écran « Refaire mes erreurs » utilise toujours la musique de l'accueil,
+       qu'il y ait encore des erreurs à corriger ou que la liste soit vide. */
+    setTimeout(() => window.LumiAudio?.playMenu?.(), 0);
   };
 
   function labelForMistake(m){
