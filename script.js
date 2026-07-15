@@ -1301,6 +1301,10 @@ function selectExerciseAnswer(button, choice) {
   selectedAnswer = choice;
   document.querySelectorAll(".choice-item").forEach(btn => btn.classList.remove("selected"));
   button.classList.add("selected");
+
+  // Exercice 1 : le même clic sélectionne la réponse et lit le mot.
+  // Aucun bouton ou élément visuel supplémentaire n'est ajouté.
+  speak(choice);
 }
 
 function validateExerciseAnswer(goodAnswer) {
@@ -6709,16 +6713,36 @@ if (gameState.openedSecondChapterChests?.[5]) {
     else window.LumiAudio.playWrong();
   });
 
-  wrap("validateGuidedMatch", () => window.LumiAudio.playValidation(), () => {
-    if (
-      typeof selectedSound !== "undefined" &&
-      typeof selectedSyllable !== "undefined" &&
-      selectedSound &&
-      selectedSyllable &&
-      selectedSound === selectedSyllable
-    ) window.LumiAudio.playCorrect();
-    else window.LumiAudio.playWrong();
-  });
+  // Exercice 2 : on doit lire le résultat AVANT l'appel original.
+  // La validation remet ensuite selectedSound et selectedSyllable à vide,
+  // ce qui faisait auparavant jouer mauvaise_reponse même après une réussite.
+  (function wrapGuidedMatchAudio(){
+    const original = window.validateGuidedMatch;
+    if (typeof original !== "function" || original.__lumiAudioWrapped) return;
+
+    const wrapped = function(...args){
+      const hadBothChoices = Boolean(
+        typeof selectedSound !== "undefined" &&
+        typeof selectedSyllable !== "undefined" &&
+        selectedSound &&
+        selectedSyllable
+      );
+      const wasCorrect = hadBothChoices && selectedSound === selectedSyllable;
+
+      window.LumiAudio.playValidation();
+      const result = original.apply(this, args);
+
+      if (hadBothChoices) {
+        if (wasCorrect) window.LumiAudio.playCorrect();
+        else window.LumiAudio.playWrong();
+      }
+
+      return result;
+    };
+
+    wrapped.__lumiAudioWrapped = true;
+    window.validateGuidedMatch = wrapped;
+  })();
 
   wrap("validateMistakeAnswer", () => window.LumiAudio.playValidation(), () => {
     const message = document.getElementById("mistakeMessage");

@@ -4679,3 +4679,115 @@ body{
     width:100%;
   }
 }
+
+
+/* =========================================================
+   CORRECTIF MOBILE V2 — EN-TÊTE ET CARTES
+   Ajouté sans modifier les styles ordinateur.
+========================================================= */
+@media (max-width:700px){
+  .app{
+    padding:0 !important;
+  }
+
+  .game-shell{
+    width:100% !important;
+    max-width:none !important;
+    min-height:100svh !important;
+    border-radius:0 !important;
+  }
+
+  .game-header{
+    position:sticky !important;
+    top:0 !important;
+    padding:10px 12px !important;
+    gap:8px !important;
+    overflow:visible !important;
+  }
+
+  .brand-button{
+    min-width:0 !important;
+    gap:8px !important;
+    flex:1 1 auto !important;
+  }
+
+  .brand-button .mascot{
+    width:48px !important;
+    height:48px !important;
+    min-width:48px !important;
+    border-radius:16px !important;
+  }
+
+  .brand-button h1{
+    font-size:24px !important;
+    white-space:nowrap !important;
+  }
+
+  .brand-button .badge{
+    padding:5px 9px !important;
+    font-size:11px !important;
+    white-space:nowrap !important;
+  }
+
+  .top-resources{
+    flex:0 0 auto !important;
+    display:grid !important;
+    grid-template-columns:repeat(2,40px) !important;
+    gap:5px !important;
+    overflow:visible !important;
+  }
+
+  .top-resources > span{
+    min-width:40px !important;
+    width:40px !important;
+    height:36px !important;
+    padding:0 3px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border-radius:12px !important;
+    font-size:13px !important;
+  }
+
+  .top-icon-action{
+    display:grid !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    border-radius:12px !important;
+  }
+
+  .screen{
+    padding:18px 14px !important;
+  }
+
+  .hero-v3{
+    min-height:0 !important;
+    grid-template-columns:1fr !important;
+    padding:25px 22px !important;
+  }
+
+  .hero-mascot{
+    min-height:230px !important;
+  }
+}
+
+@media (max-width:420px){
+  .brand-button h1{font-size:21px !important;}
+  .brand-button .badge{display:none !important;}
+  .brand-button .mascot{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+  }
+  .game-header{padding:9px 8px !important;}
+  .top-resources{grid-template-columns:repeat(2,37px) !important;}
+  .top-resources > span,
+  .top-icon-action{
+    width:37px !important;
+    min-width:37px !important;
+    height:37px !important;
+  }
+}

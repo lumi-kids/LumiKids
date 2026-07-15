@@ -61,12 +61,9 @@
 .chapter3d-node{position:absolute !important;width:11.5% !important;min-width:96px !important;transform:none !important;z-index:9 !important;}
 .chapter3d-node-orb{transform:translateY(-2px) !important;}
 .chapter3d-node button:hover .chapter3d-node-orb{transform:translateY(-10px) scale(1.08) !important;}
-@media(max-width:850px){.chapter3d-node{width:17% !important;}}
-@media(max-width:560px){.chapter3d-node{width:22% !important;min-width:82px !important;}}
 
 /* =========================================================
    POSITIONS — CINÉMATIQUE FINALE
-   Tu peux modifier librement left/right/top/bottom/width.
 ========================================================= */
 .final-character-lumi{width:15%;}
 .final-character-lila{width:14%;}
@@ -74,45 +71,31 @@
 .final-character-noa{width:8%;}
 .final-character-aurore{width:15%;}
 .final-character-orion{width:23%;}
-
-/* Scène 1 : arrivée des cinq héros */
 .final-scene-1 .final-character-lumi{left:22%;bottom:8%;}
 .final-scene-1 .final-character-lila{left:33%;bottom:2%;}
 .final-scene-1 .final-character-pico{left:44%;bottom:8%;}
 .final-scene-1 .final-character-noa{left:47%;top:48%;}
 .final-scene-1 .final-character-aurore{left:50%;bottom:15%;}
-
-/* Scène 2 : Orion accueille */
 .final-scene-2 .final-character-orion{right:12%;bottom:6%;}
 .final-scene-2 .final-character-lumi{left:10%;bottom:7%;}
 .final-scene-2 .final-character-lila{left:25%;bottom:7%;}
 .final-scene-2 .final-character-pico{left:40%;bottom:19%;}
 .final-scene-2 .final-character-noa{left:53%;bottom:28%;}
 .final-scene-2 .final-character-aurore{left:62%;bottom:12%;}
-
-/* Scène 3 : préparation du cercle */
 .final-scene-3 .final-character-orion{left:38%;bottom:8%;width:25%;}
-
-/* Scène 6 : réunion et don des étoiles */
 .final-scene-6 .final-character-orion{left:56%;top:20%;width:22%;}
 .final-scene-6 .final-character-lumi{left:8%;bottom:7%;width:13%;}
 .final-scene-6 .final-character-lila{left:20%;bottom:5%;width:12%;}
 .final-scene-6 .final-character-pico{left:31%;bottom:7%;width:11%;}
 .final-scene-6 .final-character-noa{right:6%;bottom:7%;width:11%;}
 .final-scene-6 .final-character-aurore{right:13%;bottom:7%;width:14%;}
-
-/* Scène 7 : explosion de magie */
 .final-scene-7 .final-character-orion{left:39%;bottom:6%;width:23%;}
-
-/* Scène 8 : tous regardent le ciel */
 .final-scene-8 .final-character-lumi{left:12%;top:64%;width:13%;}
 .final-scene-8 .final-character-lila{left:26.5%;top:69%;width:9%;}
 .final-scene-8 .final-character-pico{left:35%;top:67%;width:11%;}
 .final-scene-8 .final-character-orion{left:41%;bottom:4%;width:21%;}
 .final-scene-8 .final-character-noa{right:29%;top:42%;width:11%;}
 .final-scene-8 .final-character-aurore{right:17%;bottom:1%;width:13%;}
-
-/* Scène 9 : dernier regard */
 .final-scene-9 .final-character-lumi{left:18%;top:64%;width:12%;}
 .final-scene-9 .final-character-lila{left:28%;top:69%;width:9%;}
 .final-scene-9 .final-character-pico{left:40%;top:69%;width:10%;}
@@ -120,7 +103,68 @@
 .final-scene-9 .final-character-noa{right:28%;top:50%;width:9%;}
 .final-scene-9 .final-character-aurore{right:16%;top:48%;width:12%;}
 
+/* =========================================================
+   CORRECTIF MOBILE V2 — ROYAUMES EN FORMAT PAYSAGE
+   Les pourcentages desktop sont conservés pour que les badges
+   restent sur les socles du décor, au lieu d'être redistribués
+   verticalement.
+========================================================= */
 @media(max-width:700px){
+  .chapter3d-map{
+    width:100% !important;
+    margin:0 !important;
+    overflow:hidden !important;
+  }
+
+  .chapter3d-scene{
+    width:100% !important;
+    min-height:0 !important;
+    height:auto !important;
+    aspect-ratio:16 / 11 !important;
+    border-radius:20px !important;
+  }
+
+  .chapter3d-bg{
+    background-position:center center !important;
+    background-size:cover !important;
+  }
+
+  .chapter3d-node{
+    width:11.5% !important;
+    min-width:0 !important;
+  }
+
+  .chapter3d-node-label{
+    padding:3px 7px !important;
+    font-size:clamp(8px,2.4vw,12px) !important;
+    white-space:nowrap !important;
+  }
+
+  .chapter3d-node-state{
+    font-size:clamp(6px,1.8vw,9px) !important;
+    white-space:nowrap !important;
+  }
+
+  .chapter3d-progress{
+    max-width:46% !important;
+    min-width:0 !important;
+    padding:8px 10px !important;
+  }
+
+  .chapter3d-progress-copy strong{font-size:clamp(9px,2.5vw,13px) !important;}
+  .chapter3d-progress-copy small{font-size:clamp(6px,1.8vw,9px) !important;}
+  .chapter3d-dots span{width:clamp(12px,3.3vw,19px) !important;height:clamp(12px,3.3vw,19px) !important;}
+
+  .chapter-round-btn.music{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    min-height:42px !important;
+  }
+
+  .chapter3d-chest p{font-size:7px !important;}
+  .chapter3d-bottom-sign{max-height:22% !important;}
+
   .final-character-lumi,.final-character-lila,.final-character-pico,.final-character-noa,.final-character-aurore{width:18%;}
   .final-character-orion{width:28%;}
 }
