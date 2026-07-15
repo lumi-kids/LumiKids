@@ -168,3 +168,100 @@
   .final-character-lumi,.final-character-lila,.final-character-pico,.final-character-noa,.final-character-aurore{width:18%;}
   .final-character-orion{width:28%;}
 }
+
+/* =========================================================
+   AJUSTEMENT MOBILE V3 — LISIBILITÉ DES ROYAUMES
+   - scène légèrement plus haute ;
+   - badges plus grands pour les enfants ;
+   - progression replacée en haut à droite ;
+   - bouton musique réduit.
+========================================================= */
+@media(max-width:700px){
+  .chapter3d-scene{
+    aspect-ratio:16 / 12.2 !important;
+    min-height:460px !important;
+  }
+
+  .chapter3d-node{
+    width:14.2% !important;
+    min-width:58px !important;
+  }
+
+  .chapter3d-node-label{
+    padding:4px 8px !important;
+    font-size:clamp(10px,2.9vw,14px) !important;
+  }
+
+  .chapter3d-node-state{
+    font-size:clamp(7px,2.1vw,10px) !important;
+  }
+
+  /* Toujours en haut à droite sur téléphone, quel que soit le chapitre. */
+  .chapter-one-active .chapter3d-progress,
+  .chapter-two-active .chapter3d-progress,
+  .chapter-three-active .chapter3d-progress,
+  .chapter-four-active .chapter3d-progress,
+  .chapter-five-active .chapter3d-progress{
+    left:auto !important;
+    right:2.5% !important;
+    top:3% !important;
+    bottom:auto !important;
+    width:38% !important;
+    max-width:38% !important;
+    padding:7px 9px !important;
+    z-index:20 !important;
+  }
+
+  .chapter3d-progress-copy strong{
+    font-size:clamp(9px,2.7vw,13px) !important;
+    line-height:1.15 !important;
+  }
+
+  .chapter3d-progress-copy small{
+    font-size:clamp(6px,1.9vw,9px) !important;
+  }
+
+  .chapter3d-dots{
+    gap:4px !important;
+    margin-top:5px !important;
+  }
+
+  .chapter3d-dots span{
+    width:clamp(11px,3vw,17px) !important;
+    height:clamp(11px,3vw,17px) !important;
+  }
+
+  .chapter-round-btn.music{
+    width:32px !important;
+    height:32px !important;
+    min-width:32px !important;
+    min-height:32px !important;
+    padding:0 !important;
+  }
+
+  .chapter-round-btn.music img,
+  .chapter-round-btn.music svg{
+    width:18px !important;
+    height:18px !important;
+  }
+}
+
+@media(max-width:390px){
+  .chapter3d-scene{
+    min-height:440px !important;
+  }
+
+  .chapter3d-node{
+    width:14.8% !important;
+    min-width:54px !important;
+  }
+
+  .chapter-one-active .chapter3d-progress,
+  .chapter-two-active .chapter3d-progress,
+  .chapter-three-active .chapter3d-progress,
+  .chapter-four-active .chapter3d-progress,
+  .chapter-five-active .chapter3d-progress{
+    width:40% !important;
+    max-width:40% !important;
+  }
+}
