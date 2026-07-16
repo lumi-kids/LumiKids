@@ -1,4 +1,4 @@
-const CACHE_NAME = "lumikids-mobile-book-v7";
+const CACHE_NAME = "lumikids-audio-book-v8";
 
 const APP_FILES = [
   "./",

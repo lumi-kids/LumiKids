@@ -3178,6 +3178,9 @@ function renderStoryChapter(chapterNumber) {
   const text = document.getElementById("storybookText");
   const title = document.getElementById("storybookTitle");
   const image = document.getElementById("storybookPageBackground");
+  const miniTitle = document.getElementById("storybookMiniTitle");
+  const miniStars = document.getElementById("storybookMiniStars");
+  const miniText = document.getElementById("storybookMiniText");
 
   const storyData = {
     1: {
@@ -3207,13 +3210,22 @@ function renderStoryChapter(chapterNumber) {
   }[chapterNumber];
 
   if (!storyData) return;
-  if (starsLine) starsLine.textContent = `${stars} étoile${stars > 1 ? "s" : ""} retrouvée${stars > 1 ? "s" : ""} sur ${maxStars}`;
+  const starsSentence = `${stars} étoile${stars > 1 ? "s" : ""} retrouvée${stars > 1 ? "s" : ""} sur ${maxStars}`;
+  const paragraphsHtml = storyData.paragraphs.map(paragraph => `<p>${paragraph}</p>`).join("");
+
+  if (starsLine) starsLine.textContent = starsSentence;
   if (title) title.textContent = storyData.title;
   if (image) {
     image.src = storyData.image;
     image.alt = storyData.alt;
   }
-  if (text) text.innerHTML = storyData.paragraphs.map(paragraph => `<p>${paragraph}</p>`).join("");
+  if (text) text.innerHTML = paragraphsHtml;
+
+  /* La page droite garde maintenant une version miniature du récit,
+     tandis que le grand texte lisible reste affiché sous le livre sur mobile. */
+  if (miniTitle) miniTitle.textContent = storyData.title;
+  if (miniStars) miniStars.textContent = starsSentence;
+  if (miniText) miniText.innerHTML = paragraphsHtml;
 
   updateStoryPageNavigation();
 }
@@ -4369,13 +4381,12 @@ if (gameState.openedSecondChapterChests?.[5]) {
   let selectedMistakeAnswer = "";
 
   window.showMistakeReview = function(){
+    /* L'enfant doit entendre clairement les mots et les sons à corriger :
+       aucune musique de fond ne joue sur cet écran. */
+    window.LumiAudio?.stopBackground?.(true);
     hideAllScreens();
     document.getElementById("mistakeReviewScreen")?.classList.remove("hidden");
     renderMistakeList();
-
-    /* L'écran « Refaire mes erreurs » utilise toujours la musique de l'accueil,
-       qu'il y ait encore des erreurs à corriger ou que la liste soit vide. */
-    setTimeout(() => window.LumiAudio?.playMenu?.(), 0);
   };
 
   function labelForMistake(m){
@@ -6578,6 +6589,42 @@ if (gameState.openedSecondChapterChests?.[5]) {
     document.addEventListener(eventName, unlockAudio, { once: true, passive: true });
   });
 
+  /* Safari iPhone peut continuer à jouer le son lorsque l'utilisateur change
+     d'onglet ou quitte le navigateur. On suspend donc explicitement la musique,
+     puis on la reprend seulement lorsque la page redevient réellement visible. */
+  let backgroundSuspendedByPage = false;
+
+  function suspendBackgroundForPage(){
+    if (!background.paused && desiredBackground) {
+      backgroundSuspendedByPage = true;
+      background.pause();
+    }
+  }
+
+  function resumeBackgroundForPage(){
+    if (
+      backgroundSuspendedByPage &&
+      desiredBackground &&
+      !isCurrentBackgroundMuted() &&
+      document.visibilityState === "visible"
+    ) {
+      backgroundSuspendedByPage = false;
+      audioUnlocked = true;
+      applyBackgroundVolume();
+      tryPlay(background);
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") suspendBackgroundForPage();
+    else resumeBackgroundForPage();
+  });
+
+  window.addEventListener("pagehide", suspendBackgroundForPage);
+  window.addEventListener("blur", suspendBackgroundForPage);
+  window.addEventListener("pageshow", resumeBackgroundForPage);
+  window.addEventListener("focus", resumeBackgroundForPage);
+
   window.LumiAudio = {
     paths: AUDIO_PATHS,
     settings,
@@ -6682,7 +6729,7 @@ if (gameState.openedSecondChapterChests?.[5]) {
     window[name] = wrapped;
   }
 
-  ["showHome", "showReadingHome", "showRewards", "showParentDashboard", "showWorldMap", "showMistakeReview"]
+  ["showHome", "showReadingHome", "showRewards", "showParentDashboard", "showWorldMap"]
     .forEach(name => wrap(name, null, playMenu));
 
   wrap("showLettersHome", null, () => playChapter(window.currentLetterChapter || 1));

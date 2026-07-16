@@ -5042,3 +5042,127 @@ body{
     font-size:9px !important;
   }
 }
+
+
+/* =========================================================
+   CORRECTIF V8 — TITRE MOBILE, TEXTE DANS LE LIVRE ET AUDIO
+========================================================= */
+
+/* Safari applique parfois la couleur bleue des boutons-liens au nom LumiKids. */
+.brand-button,
+.brand-button:link,
+.brand-button:visited,
+.brand-button:hover,
+.brand-button:active,
+.brand-button h1{
+  color:#111814 !important;
+  -webkit-text-fill-color:#111814 !important;
+  text-decoration:none !important;
+}
+
+/* Version miniature du récit placée directement sur la page droite. */
+.storybook-mini-copy{
+  position:absolute;
+  z-index:6;
+  left:54.2%;
+  top:12.5%;
+  width:37.5%;
+  height:70%;
+  overflow:hidden;
+  color:#603c25;
+  font-family:Georgia,"Times New Roman",serif;
+  pointer-events:none;
+  text-align:left;
+}
+
+.storybook-mini-kicker{
+  margin:0 0 2.2%;
+  font-family:inherit;
+  font-size:clamp(5px,.62vw,10px);
+  line-height:1.1;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.storybook-mini-copy h3{
+  margin:0 0 1.8%;
+  font-family:inherit;
+  font-size:clamp(9px,1.34vw,23px);
+  line-height:1.02;
+  color:#6a3b25;
+}
+
+.storybook-mini-stars{
+  margin:0 0 3%;
+  font-size:clamp(5px,.72vw,12px);
+  line-height:1.15;
+  font-weight:800;
+}
+
+.storybook-mini-text{
+  font-size:clamp(5px,.69vw,11px);
+  line-height:1.32;
+}
+
+.storybook-mini-text p{
+  margin:0 0 3.2%;
+}
+
+@media(max-width:700px){
+  .brand-button h1{
+    color:#111814 !important;
+    -webkit-text-fill-color:#111814 !important;
+  }
+
+  /* Sur mobile, la miniature appartient à l'image du livre située en haut. */
+  .storybook-mini-copy{
+    top:2.6svh !important;
+    left:53.2% !important;
+    width:40.5% !important;
+    height:39svh !important;
+    padding:1.2svh 1.4vw !important;
+    box-sizing:border-box !important;
+  }
+
+  .storybook-mini-kicker{
+    margin-bottom:.45svh !important;
+    font-size:clamp(4.5px,1.25vw,7px) !important;
+  }
+
+  .storybook-mini-copy h3{
+    margin-bottom:.45svh !important;
+    font-size:clamp(8px,2.55vw,14px) !important;
+    line-height:1.02 !important;
+  }
+
+  .storybook-mini-stars{
+    margin-bottom:.65svh !important;
+    font-size:clamp(5px,1.45vw,8px) !important;
+  }
+
+  .storybook-mini-text{
+    font-size:clamp(5px,1.38vw,7.5px) !important;
+    line-height:1.28 !important;
+  }
+
+  .storybook-mini-text p{
+    margin-bottom:.55svh !important;
+  }
+}
+
+@media(max-width:390px){
+  .storybook-mini-copy{
+    top:2.2svh !important;
+    height:36.5svh !important;
+  }
+
+  .storybook-mini-copy h3{
+    font-size:9px !important;
+  }
+
+  .storybook-mini-text{
+    font-size:5.2px !important;
+    line-height:1.24 !important;
+  }
+}
