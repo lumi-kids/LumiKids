@@ -438,6 +438,7 @@
         <div class="reading-menu-v3">
           <button onclick="showLettersHome()"><span class="reading-icon">Aa</span><span><small>Parcours 1</small><strong>Les lettres</strong><em>Sons, syllabes, mots et phrases</em></span><b>→</b></button>
           <button onclick="showSoundsHome()"><span class="reading-icon blue">ch</span><span><small>Parcours 2</small><strong>Les sons composés</strong><em>AN, ON, OU, CH, OI et plus</em></span><b>→</b></button>
+          <button class="practice-entry-v9" onclick="showReadingExercisesHome()"><span class="reading-icon purple">★</span><span><small>Parcours 3</small><strong>Les exercices</strong><em>Les 26 lettres et tous les sons composés</em></span><b>→</b></button>
         </div>
       </div>
 
@@ -549,6 +550,39 @@
           <strong id="soundsUnlockText">0 / 14 lettres</strong>
         </div>
         <div id="soundsGrid" class="lesson-grid"></div>
+      </div>
+
+
+      <div id="readingExercisesScreen" class="screen hidden practice-screen-v9">
+        <div class="page-heading">
+          <button class="back-btn" onclick="showReadingHome()">← Lecture</button>
+          <div>
+            <p class="eyebrow">Entraînement libre</p>
+            <h2>Choisis ce que tu veux travailler</h2>
+          </div>
+        </div>
+
+        <div class="practice-mode-tabs-v9" role="tablist" aria-label="Choisir le type d’entraînement">
+          <button id="practiceLettersTabV9" class="active" onclick="setPracticeModeV9('letter')">Les 26 lettres</button>
+          <button id="practiceSoundsTabV9" onclick="setPracticeModeV9('sound')">Les sons composés</button>
+        </div>
+
+        <section id="practiceChooserV9" class="practice-chooser-v9">
+          <div class="practice-intro-v9">
+            <div>
+              <small>Révision complémentaire</small>
+              <h3 id="practiceChooserTitleV9">Toutes les lettres de A à Z</h3>
+              <p id="practiceChooserTextV9">Choisis une lettre, relis le petit rappel de cours puis entraîne-toi avec les activités.</p>
+            </div>
+            <span id="practiceChooserBadgeV9">Aa</span>
+          </div>
+          <div id="practiceLessonsGridV9" class="practice-lessons-grid-v9"></div>
+        </section>
+
+        <section id="practiceLessonPanelV9" class="practice-lesson-panel-v9 hidden">
+          <button class="practice-back-v9" onclick="closePracticeLessonV9()">← Choisir une autre leçon</button>
+          <div id="practiceLessonContentV9"></div>
+        </section>
       </div>
 
       <div id="lessonScreen" class="screen hidden">

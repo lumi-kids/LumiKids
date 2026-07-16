@@ -6968,3 +6968,1692 @@ if (gameState.openedSecondChapterChests?.[5]) {
 
   playMenu();
 })();
+
+
+/* =========================================================
+   LUMIKIDS — MISE À JOUR EXERCICES V9
+   - 3e exercice dans l'histoire : lettre manquante avec audio
+   - barème 2 / 1 / 0 étoile
+   - parcours Exercices : 26 lettres + sons composés
+========================================================= */
+(function installReadingExercisesV9(){
+  "use strict";
+
+  const HISTORY_MAX_STARS_V9 = 2;
+  const FULL_ALPHABET_V9 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const PRACTICE_TYPES_V9 = [
+    { id:"hear", icon:"👂", title:"J’entends ou je n’entends pas", text:"Écoute un mot et indique si le son est présent." },
+    { id:"intruder", icon:"🔎", title:"Trouve l’intrus", text:"Repère le mot qui ne contient pas la lettre ou le son." },
+    { id:"position", icon:"📍", title:"Où entends-tu le son ?", text:"Au début, au milieu ou à la fin du mot." },
+    { id:"orderSyllables", icon:"🧩", title:"Remets les syllabes dans l’ordre", text:"Reconstruis le mot avec ses syllabes." },
+    { id:"missingSyllable", icon:"✏️", title:"Retrouve la syllabe manquante", text:"Choisis la partie qui complète correctement le mot." },
+    { id:"buildWord", icon:"🔊", title:"Construis le mot entendu", text:"Écoute puis sélectionne les syllabes dans le bon ordre." },
+    { id:"spelling", icon:"✅", title:"Choisis la bonne écriture", text:"Écoute et retrouve le mot correctement écrit." },
+    { id:"dictation", icon:"⌨️", title:"Écris le mot entendu", text:"Une petite dictée avec le clavier." },
+    { id:"orderSentence", icon:"🔀", title:"Remets la phrase dans l’ordre", text:"Replace tous les mots pour reformer la phrase." },
+    { id:"missingWord", icon:"💬", title:"Retrouve le mot manquant", text:"Complète une phrase avec le bon mot." },
+    { id:"chooseSentence", icon:"📖", title:"Choisis la bonne phrase", text:"Écoute puis sélectionne la phrase entendue." }
+  ];
+
+  /* ---------------------------------------------------------
+     DONNÉES DES SIX LETTRES ABSENTES DE L'HISTOIRE
+     Elles existent uniquement dans le parcours d'entraînement.
+  --------------------------------------------------------- */
+  const supplementalLetterLessonsV9 = {
+    G: makeLetterLesson("G", "g", ["ga","ge","gi","go","gu"], [
+      makeWord("gare","ga / re"),
+      makeWord("gomme","gom / me"),
+      makeWord("gâteau","gâ / teau"),
+      makeWord("girafe","gi / ra / fe")
+    ], [
+      "La girafe regarde la gare.",
+      "Gaston mange un gâteau."
+    ]),
+    H: makeLetterLesson("H", "h", ["ha","he","hi","ho","hu"], [
+      makeWord("hibou","hi / bou"),
+      makeWord("hôtel","hô / tel"),
+      makeWord("histoire","his / toi / re"),
+      makeWord("herbe","her / be")
+    ], [
+      "Le hibou écoute une histoire.",
+      "Hugo est devant l’hôtel."
+    ]),
+    K: makeLetterLesson("K", "k", ["ka","ke","ki","ko","ku"], [
+      makeWord("kiwi","ki / wi"),
+      makeWord("koala","ko / a / la"),
+      makeWord("kayak","ka / yak"),
+      makeWord("képi","ké / pi")
+    ], [
+      "Le koala mange un kiwi.",
+      "Kimi avance en kayak."
+    ]),
+    O: makeLetterLesson("O", "o", ["mo","po","lo","so"], [
+      makeWord("orange","o / ran / ge"),
+      makeWord("moto","mo / to"),
+      makeWord("domino","do / mi / no"),
+      makeWord("vélo","vé / lo")
+    ], [
+      "Oscar a une orange.",
+      "La moto roule."
+    ]),
+    X: makeLetterLesson("X", "x", ["xa","xe","xi","xo"], [
+      makeWord("xylophone","xy / lo / pho / ne"),
+      makeWord("taxi","ta / xi"),
+      makeWord("boxe","bo / xe"),
+      makeWord("six","six")
+    ], [
+      "Max joue du xylophone.",
+      "Le taxi passe."
+    ]),
+    Y: makeLetterLesson("Y", "y", ["ya","ye","yi","yo"], [
+      makeWord("yaourt","ya / ourt"),
+      makeWord("yacht","yacht"),
+      makeWord("yoga","yo / ga"),
+      makeWord("stylo","sty / lo")
+    ], [
+      "Yasmine mange un yaourt.",
+      "Le yacht avance."
+    ])
+  };
+
+  Object.entries(supplementalLetterLessonsV9).forEach(([key, lesson]) => {
+    if (!letterLessons[key]) letterLessons[key] = lesson;
+  });
+
+  /* ---------------------------------------------------------
+     MIGRATION DU BARÈME
+     Ancien système : 2 exercices x 3 étoiles.
+     Nouveau système : 3 exercices x 2 étoiles.
+     Les anciennes lettres terminées conservent donc leurs 6 étoiles.
+  --------------------------------------------------------- */
+  function ensureHistoryEntryV9(letter){
+    const progress = getProgress("letter", letter);
+    if (!progress.exerciseRewards) progress.exerciseRewards = {};
+
+    if (!Number.isFinite(Number(progress.exerciseRewards.exercise1))) {
+      progress.exerciseRewards.exercise1 = Number(progress.exercise1Stars || 0);
+    }
+    if (!Number.isFinite(Number(progress.exerciseRewards.exercise2))) {
+      progress.exerciseRewards.exercise2 = Number(progress.exercise2Stars || 0);
+    }
+    if (!Number.isFinite(Number(progress.exerciseRewards.exercise3))) {
+      progress.exerciseRewards.exercise3 = Number(progress.exercise3Stars || 0);
+    }
+
+    if (typeof progress.exercise3Done !== "boolean") {
+      progress.exercise3Done = Boolean(progress.completed && progress.exercise3Stars);
+    }
+    return progress;
+  }
+
+  function setHistoryRewardV9(progress, exerciseName, value){
+    const safe = Math.max(0, Math.min(HISTORY_MAX_STARS_V9, Number(value || 0)));
+    progress.exerciseRewards[exerciseName] = safe;
+    progress[exerciseName + "Stars"] = safe;
+    progress[exerciseName + "Done"] = safe >= 0 && Boolean(
+      progress[exerciseName + "Done"] || safe > 0
+    );
+    return safe;
+  }
+
+  function normalizeHistoryRewardsV9(preserveCompleted = true){
+    let excessToRemove = 0;
+    activeLetters.forEach(letter => {
+      const progress = ensureHistoryEntryV9(letter);
+      const old1 = Number(progress.exerciseRewards.exercise1 || 0);
+      const old2 = Number(progress.exerciseRewards.exercise2 || 0);
+      const old3 = Number(progress.exerciseRewards.exercise3 || 0);
+
+      const new1 = Math.min(2, old1);
+      const new2 = Math.min(2, old2);
+      let new3 = Math.min(2, old3);
+
+      if (preserveCompleted && progress.completed && new3 < 2) {
+        new3 = 2;
+        progress.exercise3Done = true;
+      } else if (!progress.completed) {
+        excessToRemove += Math.max(0, old1 - new1) + Math.max(0, old2 - new2) + Math.max(0, old3 - new3);
+      }
+
+      setHistoryRewardV9(progress, "exercise1", new1);
+      setHistoryRewardV9(progress, "exercise2", new2);
+      setHistoryRewardV9(progress, "exercise3", new3);
+
+      if (progress.completed) {
+        progress.exercise1Done = true;
+        progress.exercise2Done = true;
+        progress.exercise3Done = true;
+      }
+
+      if (gameState.uniqueRewards) {
+        gameState.uniqueRewards[`lesson:letter:${letter}:exercise1`] = new1;
+        gameState.uniqueRewards[`lesson:letter:${letter}:exercise2`] = new2;
+        gameState.uniqueRewards[`lesson:letter:${letter}:exercise3`] = new3;
+      }
+    });
+
+    if (excessToRemove > 0) {
+      gameState.stars = Math.max(0, Number(gameState.stars || 0) - excessToRemove);
+      if (Number.isFinite(Number(gameState.totalStarsEarned))) {
+        gameState.totalStarsEarned = Math.max(0, Number(gameState.totalStarsEarned || 0) - excessToRemove);
+      }
+    }
+  }
+
+  if (!gameState.historyScoringV9Migrated) {
+    normalizeHistoryRewardsV9(true);
+    gameState.historyScoringV9Migrated = true;
+    saveGameState();
+  } else {
+    normalizeHistoryRewardsV9(true);
+  }
+
+  function historyRewardTotalV9(letter, exerciseName){
+    const progress = ensureHistoryEntryV9(letter);
+    return Math.min(2, Number(progress.exerciseRewards[exerciseName] || 0));
+  }
+
+  function grantHistoryStarsV9(letter, exerciseName, desiredTotal){
+    const progress = ensureHistoryEntryV9(letter);
+    const oldTotal = historyRewardTotalV9(letter, exerciseName);
+    const newTotal = Math.min(2, Math.max(oldTotal, Number(desiredTotal || 0)));
+    const gained = Math.max(0, newTotal - oldTotal);
+
+    setHistoryRewardV9(progress, exerciseName, newTotal);
+
+    if (!gameState.uniqueRewards) gameState.uniqueRewards = {};
+    gameState.uniqueRewards[`lesson:letter:${letter}:${exerciseName}`] = newTotal;
+
+    if (gained > 0) {
+      gameState.stars = Number(gameState.stars || 0) + gained;
+      if (!Number.isFinite(Number(gameState.totalStarsEarned))) {
+        gameState.totalStarsEarned = Number(gameState.stars || 0);
+      } else {
+        gameState.totalStarsEarned += gained;
+      }
+    }
+
+    saveGameState();
+    updateGameUi();
+    return gained;
+  }
+
+  /* Nouveau barème demandé : 0 faute = 2, 1 faute = 1, 2+ fautes = 0. */
+  calculateExerciseStars = function(errors){
+    const count = Math.max(0, Number(errors || 0));
+    if (count === 0) return 2;
+    if (count === 1) return 1;
+    return 0;
+  };
+
+  if (!LETTER_GUIDED_STEPS.includes("exercise3")) {
+    LETTER_GUIDED_STEPS.push("exercise3");
+  }
+  if (!SOUND_GUIDED_STEPS.includes("exercise2")) SOUND_GUIDED_STEPS.push("exercise2");
+  if (!SOUND_GUIDED_STEPS.includes("exercise3")) SOUND_GUIDED_STEPS.push("exercise3");
+
+  function ensureSoundHistoryEntryV9(sound){
+    const progress = getProgress("sound",sound);
+    if (!progress.exerciseRewards) progress.exerciseRewards = {};
+    ["exercise1","exercise2","exercise3"].forEach(name => {
+      if (!Number.isFinite(Number(progress.exerciseRewards[name]))) {
+        progress.exerciseRewards[name] = Number(progress[name + "Stars"] || 0);
+      }
+      progress[name + "Stars"] = Math.min(2,Number(progress.exerciseRewards[name] || 0));
+      progress.exerciseRewards[name] = progress[name + "Stars"];
+      if (typeof progress[name + "Done"] !== "boolean") {
+        progress[name + "Done"] = Boolean(progress[name + "Stars"]);
+      }
+    });
+    return progress;
+  }
+
+  if (!gameState.soundScoringV9Migrated) {
+    let soundDelta = 0;
+    soundKeys.forEach(sound => {
+      const raw = getProgress("sound",sound);
+      const rawRewards = raw.exerciseRewards || {};
+      const oldTotal = ["exercise1","exercise2","exercise3"].reduce((sum,name) => {
+        return sum + Number(rawRewards[name] ?? raw[name + "Stars"] ?? 0);
+      },0);
+
+      const progress = ensureSoundHistoryEntryV9(sound);
+      if (progress.completed) {
+        ["exercise1","exercise2","exercise3"].forEach(name => {
+          progress.exerciseRewards[name] = 2;
+          progress[name + "Stars"] = 2;
+          progress[name + "Done"] = true;
+        });
+        soundDelta += Math.max(0,6 - oldTotal);
+      }
+    });
+
+    if (soundDelta > 0) {
+      const oldStars = Number(gameState.stars || 0);
+      const oldTotalEarned = Number.isFinite(Number(gameState.totalStarsEarned))
+        ? Number(gameState.totalStarsEarned)
+        : oldStars;
+      gameState.stars = oldStars + soundDelta;
+      gameState.totalStarsEarned = oldTotalEarned + soundDelta;
+    }
+    gameState.soundScoringV9Migrated = true;
+    saveGameState();
+  }
+
+  function soundRewardTotalV9(sound,exerciseName){
+    const progress = ensureSoundHistoryEntryV9(sound);
+    return Math.min(2,Number(progress.exerciseRewards[exerciseName] || 0));
+  }
+
+  function grantSoundHistoryStarsV9(sound,exerciseName,desiredTotal){
+    const progress = ensureSoundHistoryEntryV9(sound);
+    const oldTotal = soundRewardTotalV9(sound,exerciseName);
+    const newTotal = Math.min(2,Math.max(oldTotal,Number(desiredTotal || 0)));
+    const gained = Math.max(0,newTotal - oldTotal);
+
+    progress.exerciseRewards[exerciseName] = newTotal;
+    progress[exerciseName + "Stars"] = newTotal;
+    progress[exerciseName + "Done"] = true;
+
+    if (!gameState.uniqueRewards) gameState.uniqueRewards = {};
+    gameState.uniqueRewards[`lesson:sound:${sound}:${exerciseName}`] = newTotal;
+
+    if (gained > 0) {
+      const oldStars = Number(gameState.stars || 0);
+      gameState.stars = oldStars + gained;
+      gameState.totalStarsEarned = Number.isFinite(Number(gameState.totalStarsEarned))
+        ? Number(gameState.totalStarsEarned) + gained
+        : oldStars + gained;
+    }
+    saveGameState();
+    updateGameUi();
+    return gained;
+  }
+
+  function normalizeSoundRewardsV9(){
+    let excess = 0;
+    soundKeys.forEach(sound => {
+      const progress = getProgress("sound",sound);
+      if (!progress.exerciseRewards) progress.exerciseRewards = {};
+      ["exercise1","exercise2","exercise3"].forEach(name => {
+        const raw = Number(progress.exerciseRewards[name] ?? progress[name + "Stars"] ?? 0);
+        const safe = Math.min(2,Math.max(0,raw));
+        excess += Math.max(0,raw - safe);
+        progress.exerciseRewards[name] = safe;
+        progress[name + "Stars"] = safe;
+      });
+    });
+    if (excess > 0) {
+      gameState.stars = Math.max(0,Number(gameState.stars || 0) - excess);
+      if (Number.isFinite(Number(gameState.totalStarsEarned))) {
+        gameState.totalStarsEarned = Math.max(0,Number(gameState.totalStarsEarned) - excess);
+      }
+    }
+  }
+
+  const previousGetTotalLessonStarsV9 = getTotalLessonStars;
+  getTotalLessonStars = function(type,key){
+    if (type === "letter") {
+      return ["exercise1","exercise2","exercise3"]
+        .reduce((sum,name) => sum + historyRewardTotalV9(key,name),0);
+    }
+    if (type === "sound") {
+      return ["exercise1","exercise2","exercise3"]
+        .reduce((sum,name) => sum + soundRewardTotalV9(key,name),0);
+    }
+    return previousGetTotalLessonStarsV9(type,key);
+  };
+
+  updateLessonMastery = function(){
+    if (!currentLesson) return;
+    const stars = getTotalLessonStars(currentLesson.type,currentLesson.key);
+    const max = (currentLesson.type === "letter" || currentLesson.type === "sound") ? 6 : 3;
+    setText("lessonMastery", `${stars} / ${max} ★`);
+  };
+
+  const previousStepLabelV9 = stepLabel;
+  stepLabel = function(part){
+    if (part === "exercise3") return "Complète le mot";
+    return previousStepLabelV9(part);
+  };
+
+  updateLessonTabs = function(){
+    if (!currentLesson) return;
+    const progress = getProgress(currentLesson.type, currentLesson.key);
+    const completed = progress.completed;
+    const steps = getGuidedSteps(currentLesson.type);
+    const visibleTabs = currentLesson.type === "letter"
+      ? [
+          ["letters","Sons"],
+          ["syllables","Syllabes"],
+          ["words","Mots"],
+          ["phrases","Phrases"],
+          ["exercise1","Exercice 1"],
+          ["exercise2","Exercice 2"],
+          ["exercise3","Exercice 3"]
+        ]
+      : [
+          ["letters","Son"],
+          ["words","Mots"],
+          ["phrases","Phrases"],
+          ["exercise1","Exercice 1"],
+          ["exercise2","Exercice 2"],
+          ["exercise3","Exercice 3"]
+        ];
+
+    lessonTabs.innerHTML = visibleTabs.map(([part,label]) => {
+      const index = steps.indexOf(part);
+      const locked = !completed && index > Number(progress.step || 0);
+      const done = completed || index < Number(progress.step || 0);
+      const defaultPart = steps[Math.min(Number(progress.step || 0), steps.length - 1)];
+      const active = part === (currentLessonActivePart || defaultPart);
+      return `<button
+        class="${locked ? "tab-locked" : ""} ${done ? "tab-done" : ""} ${active ? "tab-active" : ""}"
+        ${locked ? "disabled" : ""}
+        onclick="showLessonPart('${part}')">${label}</button>`;
+    }).join("");
+  };
+
+  const previousShowLessonPartV9 = showLessonPart;
+  showLessonPart = function(part,force = false){
+    if (currentLesson?.type === "sound" && part === "exercise2") {
+      const progress = getProgress("sound",currentLesson.key);
+      const index = getGuidedSteps("sound").indexOf("exercise2");
+      if (!force && !progress.completed && index > Number(progress.step || 0)) {
+        showToast("Termine d’abord l’exercice 1.");
+        return;
+      }
+      return showSoundSpellingExerciseV9(false);
+    }
+
+    if (part === "exercise3") {
+      const progress = getProgress(currentLesson.type,currentLesson.key);
+      const index = getGuidedSteps(currentLesson.type).indexOf("exercise3");
+      if (!force && !progress.completed && index > Number(progress.step || 0)) {
+        showToast("Termine d’abord l’exercice 2.");
+        return;
+      }
+      return showHistoryMissingLetterExerciseV9(false);
+    }
+    return previousShowLessonPartV9(part,force);
+  };
+
+  showExerciseMenu = function(){
+    const progress = getProgress(currentLesson.type, currentLesson.key);
+    if (!progress.completed) {
+      return showLessonPart(currentGuidedPart(currentLesson.type, currentLesson.key), true);
+    }
+
+    lessonContent.innerHTML = `
+      <div class="lesson-box">
+        <p class="subtitle">Cette leçon est terminée. Tu peux rejouer à l’activité de ton choix.</p>
+        <button class="section-btn" onclick="startGuidedExerciseOne(true)">Exercice 1 · Écoute et choisis</button>
+        ${currentLesson.type === "letter"
+          ? `<button class="section-btn" onclick="showMatchExercise(true)">Exercice 2 · Relie son et syllabe</button>`
+          : `<button class="section-btn" onclick="showSoundSpellingExerciseV9(true)">Exercice 2 · Choisis la bonne écriture</button>`}
+        <button class="section-btn" onclick="showHistoryMissingLetterExerciseV9(true)">Exercice 3 · Complète le mot</button>
+      </div>`;
+  };
+
+  /* ---------------------------------------------------------
+     FINALISATION DES TROIS EXERCICES DE L'HISTOIRE
+  --------------------------------------------------------- */
+  let historyValidationLockedV9 = false;
+
+  function unlockNextStoryLessonV9(){
+    const type = currentLesson.type;
+    const list = type === "letter" ? activeLetters : soundKeys;
+    const index = list.indexOf(currentLesson.key);
+    const next = list[index + 1];
+
+    if (next) {
+      getProgress(type,next).unlocked = true;
+      gameState.learningProgress.lastUnlocked = `${type}-${next}`;
+    } else if (type === "letter" && soundKeys.length) {
+      const firstSound = getProgress("sound",soundKeys[0]);
+      if (firstSound) firstSound.unlocked = true;
+      gameState.learningProgress.lastUnlocked = `sound-${soundKeys[0]}`;
+    }
+  }
+
+  function renderHistoryResultV9(exerciseName, gained, score){
+    const number = exerciseName.replace("exercise","");
+    const completed = exerciseName === "exercise3";
+    let actions = "";
+
+    if (exerciseName === "exercise1") {
+      actions = `
+        <button class="btn primary" onclick="startGuidedExerciseOne(true)">Refaire l’exercice 1</button>
+        <button class="btn guided-next" onclick="showLessonPart('exercise2',true)">Passer à l’exercice 2 →</button>`;
+    } else if (exerciseName === "exercise2") {
+      actions = `
+        <button class="btn primary" onclick="${currentLesson.type === "letter" ? "showMatchExercise(true)" : "showSoundSpellingExerciseV9(true)"}">Refaire l’exercice 2</button>
+        <button class="btn guided-next" onclick="showHistoryMissingLetterExerciseV9(false)">Passer à l’exercice 3 →</button>`;
+    } else {
+      actions = `
+        <button class="btn primary" onclick="showHistoryMissingLetterExerciseV9(true)">Refaire l’exercice 3</button>
+        <button class="btn guided-next" onclick="returnToPathAfterCompletion()">Continuer l’aventure →</button>`;
+    }
+
+    if (typeof getMistakes === "function" && getMistakes().length) {
+      actions += `<button class="btn stop" onclick="showMistakeReview()">Corriger mes erreurs</button>`;
+    }
+
+    lessonContent.innerHTML = `
+      <div class="completion-panel">
+        <div class="completion-badge">★</div>
+        <h2>${completed ? `${currentLesson.title} terminée !` : `Exercice ${number} terminé !`}</h2>
+        <p>${gained > 0
+          ? `Tu as gagné ${gained} nouvelle${gained > 1 ? "s" : ""} étoile${gained > 1 ? "s" : ""}.`
+          : "Ton meilleur résultat est déjà enregistré."}</p>
+        <span class="history-result-score-v9">Résultat : ${score} / 2 étoiles</span>
+        <div class="exercise-finish-actions">${actions}</div>
+      </div>`;
+  }
+
+  function finishHistoryExerciseV9(exerciseName,score){
+    const type = currentLesson.type;
+    const progress = type === "letter"
+      ? ensureHistoryEntryV9(currentLesson.key)
+      : ensureSoundHistoryEntryV9(currentLesson.key);
+
+    const gained = type === "letter"
+      ? grantHistoryStarsV9(currentLesson.key,exerciseName,score)
+      : grantSoundHistoryStarsV9(currentLesson.key,exerciseName,score);
+
+    progress[exerciseName + "Done"] = true;
+    progress[exerciseName + "Stars"] = Math.max(
+      Number(progress[exerciseName + "Stars"] || 0),
+      Number(score || 0)
+    );
+
+    const steps = getGuidedSteps(type);
+    if (exerciseName === "exercise1") {
+      progress.step = Math.max(Number(progress.step || 0),steps.indexOf("exercise2"));
+    } else if (exerciseName === "exercise2") {
+      progress.step = Math.max(Number(progress.step || 0),steps.indexOf("exercise3"));
+    } else {
+      progress.step = steps.length;
+      progress.completed = true;
+      progress.exercise3Done = true;
+      unlockNextStoryLessonV9();
+    }
+
+    saveLearningProgress();
+    updateLessonTabs();
+    updateLessonMastery();
+    if (gained > 0) createConfetti();
+
+    if (exerciseName === "exercise3") {
+      window.LumiAudio?.playLevelComplete?.();
+    } else {
+      window.LumiAudio?.playExerciseComplete?.();
+    }
+
+    renderHistoryResultV9(exerciseName,gained,score);
+  }
+
+  validateGuidedExerciseOne = function(goodAnswer, replay){
+    if (historyValidationLockedV9) return;
+    const msg = document.getElementById("exerciseMessage");
+    if (!msg) return;
+
+    window.LumiAudio?.playValidation?.();
+
+    if (!selectedAnswer) {
+      msg.textContent = "Choisis une réponse";
+      msg.className = "message bad";
+      return;
+    }
+
+    if (selectedAnswer !== goodAnswer) {
+      guidedExerciseErrors += 1;
+      msg.textContent = "Essaie encore";
+      msg.className = "message bad";
+      window.LumiAudio?.playWrong?.();
+
+      window.rememberMistake?.({
+        kind:"word",
+        lessonType:currentLesson.type,
+        lessonKey:currentLesson.key,
+        exerciseName:"exercise1",
+        answer:goodAnswer,
+        audio:goodAnswer
+      });
+
+      selectedAnswer = "";
+      document.querySelectorAll(".choice-item").forEach(btn => btn.classList.remove("selected"));
+      recordWrongAnswer();
+      return;
+    }
+
+    historyValidationLockedV9 = true;
+    msg.textContent = "Bravo !";
+    msg.className = "message good";
+    window.LumiAudio?.playCorrect?.();
+
+    guidedExerciseCorrect += 1;
+    guidedExerciseRoundIndex += 1;
+    rewardPlayer(7,0,2,null);
+    createConfetti();
+
+    if (guidedExerciseRoundIndex >= guidedExerciseTarget) {
+      const score = calculateExerciseStars(guidedExerciseErrors);
+      setTimeout(() => {
+        historyValidationLockedV9 = false;
+        finishHistoryExerciseV9("exercise1",score);
+      },450);
+      return;
+    }
+
+    setTimeout(() => {
+      historyValidationLockedV9 = false;
+      showListenAndChooseExerciseRound(replay);
+    },550);
+  };
+
+  validateGuidedMatch = function(replay){
+    if (historyValidationLockedV9) return;
+    const msg = document.getElementById("matchMessage");
+    if (!msg) return;
+
+    window.LumiAudio?.playValidation?.();
+
+    if (!selectedSound || !selectedSyllable) {
+      msg.textContent = "Choisis les deux";
+      msg.className = "message bad";
+      return;
+    }
+
+    if (selectedSound !== selectedSyllable) {
+      guidedExerciseErrors += 1;
+      msg.textContent = "Essaie encore";
+      msg.className = "message bad";
+      window.LumiAudio?.playWrong?.();
+
+      const audioItem = currentLesson.syllables.find(
+        item => item.syllable === selectedSound
+      );
+
+      window.rememberMistake?.({
+        kind:"match",
+        lessonType:"letter",
+        lessonKey:currentLesson.key,
+        exerciseName:"exercise2",
+        answer:selectedSound,
+        audio:audioItem?.audio || selectedSound
+      });
+
+      selectedSound = "";
+      selectedSyllable = "";
+      document.querySelectorAll(".sound-choice,.syllable-choice").forEach(btn => btn.classList.remove("selected"));
+      recordWrongAnswer();
+      return;
+    }
+
+    historyValidationLockedV9 = true;
+    msg.textContent = "Bravo !";
+    msg.className = "message good";
+    window.LumiAudio?.playCorrect?.();
+    rewardPlayer(5,0,2,null);
+
+    remainingMatchItems = remainingMatchItems.filter(
+      item => item.syllable !== selectedSound
+    );
+
+    selectedSound = "";
+    selectedSyllable = "";
+
+    if (!remainingMatchItems.length) {
+      const score = calculateExerciseStars(guidedExerciseErrors);
+      setTimeout(() => {
+        historyValidationLockedV9 = false;
+        finishHistoryExerciseV9("exercise2",score);
+      },450);
+      return;
+    }
+
+    setTimeout(() => {
+      historyValidationLockedV9 = false;
+      renderMatchExerciseGuided(replay);
+    },550);
+  };
+
+  const oldStartGuidedExerciseOneV9 = startGuidedExerciseOne;
+  startGuidedExerciseOne = function(replay = false){
+    historyValidationLockedV9 = false;
+    return oldStartGuidedExerciseOneV9(replay);
+  };
+
+  const oldShowMatchExerciseV9 = showMatchExercise;
+  showMatchExercise = function(replay = false){
+    historyValidationLockedV9 = false;
+    return oldShowMatchExerciseV9(replay);
+  };
+
+  /* ---------------------------------------------------------
+     EXERCICE 2 DES SONS : CHOISIR LA BONNE ÉCRITURE
+  --------------------------------------------------------- */
+  let soundSpellingQueueV9 = [];
+  let soundSpellingIndexV9 = 0;
+  let soundSpellingErrorsV9 = 0;
+  let soundSpellingSelectedV9 = "";
+
+  function shuffleSoundV9(items){
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i],copy[j]] = [copy[j],copy[i]];
+    }
+    return copy;
+  }
+
+  function wrongSoundSpellingsV9(word,sound){
+    const lower = word.toLocaleLowerCase("fr");
+    const target = sound.toLocaleLowerCase("fr");
+    const index = lower.indexOf(target);
+    const alternatives = shuffleSoundV9(soundKeys.filter(item => item !== sound));
+    const wrong = [];
+
+    alternatives.forEach(replacement => {
+      if (wrong.length >= 2) return;
+      let candidate;
+      if (index >= 0) {
+        candidate = word.slice(0,index) + replacement + word.slice(index + target.length);
+      } else {
+        candidate = replacement + word.slice(Math.min(1,word.length));
+      }
+      if (candidate !== word && !wrong.includes(candidate)) wrong.push(candidate);
+    });
+
+    while (wrong.length < 2) wrong.push(word + (wrong.length ? "e" : "s"));
+    return wrong;
+  }
+
+  window.showSoundSpellingExerciseV9 = function(replay = false){
+    if (!currentLesson || currentLesson.type !== "sound") return;
+    stopAllAudio();
+    window.LumiAudio?.stopBackground?.(true);
+    historyValidationLockedV9 = false;
+    currentLessonActivePart = "exercise2";
+    updateLessonTabs();
+
+    const target = currentLesson.key.toLocaleLowerCase("fr");
+    let words = currentLesson.words.filter(item =>
+      item.word.toLocaleLowerCase("fr").includes(target)
+    );
+    if (!words.length) words = [...currentLesson.words];
+
+    soundSpellingQueueV9 = shuffleSoundV9(words).slice(0,Math.min(4,words.length));
+    soundSpellingIndexV9 = 0;
+    soundSpellingErrorsV9 = 0;
+    soundSpellingSelectedV9 = "";
+    renderSoundSpellingRoundV9(replay);
+  };
+
+  function renderSoundSpellingRoundV9(replay){
+    const item = soundSpellingQueueV9[soundSpellingIndexV9];
+    if (!item) {
+      finishHistoryExerciseV9("exercise2",calculateExerciseStars(soundSpellingErrorsV9));
+      return;
+    }
+
+    const choices = shuffleSoundV9([
+      item.word,
+      ...wrongSoundSpellingsV9(item.word,currentLesson.key)
+    ]);
+
+    lessonContent.innerHTML = `
+      ${guidedHeader("exercise2")}
+      <div class="lesson-box">
+        <div class="exercise-progress-v3">Question ${soundSpellingIndexV9 + 1} sur ${soundSpellingQueueV9.length}</div>
+        <p class="subtitle">Écoute puis choisis la bonne écriture du mot.</p>
+        <div class="practice-prompt-v9">
+          <p>Quel mot as-tu entendu ?</p>
+          <strong>Son « ${escapeHtmlV9(currentLesson.key)} »</strong>
+          <button class="practice-audio-v9" onclick="speak(decodeURIComponent('${encV9(item.word)}'))">🔊 Écouter le mot</button>
+        </div>
+        <div class="practice-choices-v9">
+          ${choices.map(choice => `
+            <button class="practice-choice-v9" onclick="selectSoundSpellingV9(this,decodeURIComponent('${encV9(choice)}'))">${escapeHtmlV9(choice)}</button>
+          `).join("")}
+        </div>
+        <div id="soundSpellingMessageV9" class="practice-message-v9"></div>
+        <div class="practice-actions-v9">
+          <button class="primary" onclick="validateSoundSpellingV9(${Boolean(replay)})">Valider</button>
+          <button class="secondary" onclick="stopAllAudio()">Stop lecture</button>
+        </div>
+        <div class="sound-bar-box"><div id="soundBar" class="sound-bar"></div></div>
+      </div>`;
+
+    setTimeout(() => speak(item.word),180);
+  }
+
+  window.selectSoundSpellingV9 = function(button,value){
+    soundSpellingSelectedV9 = value;
+    document.querySelectorAll(".practice-choice-v9").forEach(btn => btn.classList.remove("selected"));
+    button?.classList.add("selected");
+  };
+
+  window.validateSoundSpellingV9 = function(replay = false){
+    if (historyValidationLockedV9) return;
+    const item = soundSpellingQueueV9[soundSpellingIndexV9];
+    const msg = document.getElementById("soundSpellingMessageV9");
+    if (!item || !msg) return;
+
+    window.LumiAudio?.playValidation?.();
+
+    if (!soundSpellingSelectedV9) {
+      msg.textContent = "Choisis un mot";
+      msg.className = "practice-message-v9 bad";
+      return;
+    }
+
+    if (soundSpellingSelectedV9 !== item.word) {
+      soundSpellingErrorsV9 += 1;
+      msg.textContent = "Essaie encore";
+      msg.className = "practice-message-v9 bad";
+      window.LumiAudio?.playWrong?.();
+      window.rememberMistake?.({
+        kind:"word",
+        lessonType:"sound",
+        lessonKey:currentLesson.key,
+        exerciseName:"exercise2",
+        answer:item.word,
+        audio:item.word
+      });
+      soundSpellingSelectedV9 = "";
+      document.querySelectorAll(".practice-choice-v9").forEach(btn => btn.classList.remove("selected"));
+      recordWrongAnswer();
+      return;
+    }
+
+    historyValidationLockedV9 = true;
+    msg.textContent = "Bravo !";
+    msg.className = "practice-message-v9 good";
+    window.LumiAudio?.playCorrect?.();
+    rewardPlayer(7,0,2,null);
+    createConfetti();
+    soundSpellingIndexV9 += 1;
+
+    if (soundSpellingIndexV9 >= soundSpellingQueueV9.length) {
+      const score = calculateExerciseStars(soundSpellingErrorsV9);
+      setTimeout(() => {
+        historyValidationLockedV9 = false;
+        finishHistoryExerciseV9("exercise2",score);
+      },500);
+      return;
+    }
+
+    setTimeout(() => {
+      historyValidationLockedV9 = false;
+      soundSpellingSelectedV9 = "";
+      renderSoundSpellingRoundV9(replay);
+    },550);
+  };
+
+  /* ---------------------------------------------------------
+     EXERCICE 3 DE L'HISTOIRE : LETTRE MANQUANTE + AUDIO
+  --------------------------------------------------------- */
+  let historyMissingQueueV9 = [];
+  let historyMissingIndexV9 = 0;
+  let historyMissingErrorsV9 = 0;
+  let historyMissingSelectedV9 = "";
+  let historyMissingReplayV9 = false;
+
+  function shuffleV9(items){
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i],copy[j]] = [copy[j],copy[i]];
+    }
+    return copy;
+  }
+
+  function escapeHtmlV9(value){
+    return String(value ?? "")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+  function encV9(value){
+    return encodeURIComponent(String(value ?? ""));
+  }
+
+  function blankTargetV9(word,target){
+    const lower = String(word).toLocaleLowerCase("fr");
+    const wanted = String(target).toLocaleLowerCase("fr");
+    const index = lower.indexOf(wanted);
+    if (index < 0) return `□${escapeHtmlV9(word)}`;
+    return escapeHtmlV9(word.slice(0,index)) +
+      `<span class="missing-slot-v9">${"□".repeat(Math.max(1,wanted.length))}</span>` +
+      escapeHtmlV9(word.slice(index + wanted.length));
+  }
+
+  window.showHistoryMissingLetterExerciseV9 = function(replay = false){
+    stopAllAudio();
+    window.LumiAudio?.stopBackground?.(true);
+    historyValidationLockedV9 = false;
+    currentLessonActivePart = "exercise3";
+    updateLessonTabs();
+
+    const target = currentLesson.key.toLocaleLowerCase("fr");
+    let words = currentLesson.words.filter(item =>
+      item.word.toLocaleLowerCase("fr").includes(target)
+    );
+    if (!words.length) words = [...currentLesson.words];
+
+    historyMissingQueueV9 = shuffleV9(words).slice(0,Math.min(4,words.length));
+    historyMissingIndexV9 = 0;
+    historyMissingErrorsV9 = 0;
+    historyMissingSelectedV9 = "";
+    historyMissingReplayV9 = Boolean(replay);
+    renderHistoryMissingRoundV9();
+  };
+
+  function renderHistoryMissingRoundV9(){
+    const item = historyMissingQueueV9[historyMissingIndexV9];
+    if (!item) {
+      finishHistoryExerciseV9("exercise3",calculateExerciseStars(historyMissingErrorsV9));
+      return;
+    }
+
+    const answer = currentLesson.key.toUpperCase();
+    const pool = currentLesson.type === "sound"
+      ? soundKeys.map(sound => sound.toUpperCase()).filter(sound => sound !== answer)
+      : FULL_ALPHABET_V9.filter(letter => letter !== answer);
+    const distractors = shuffleV9(pool).slice(0,2);
+    const choices = shuffleV9([answer,...distractors]);
+
+    lessonContent.innerHTML = `
+      ${guidedHeader("exercise3")}
+      <div class="lesson-box">
+        <div class="exercise-progress-v3">Question ${historyMissingIndexV9 + 1} sur ${historyMissingQueueV9.length}</div>
+        <p class="subtitle">Écoute le mot puis choisis ${currentLesson.type === "sound" ? "le son" : "la lettre"} manquant.</p>
+
+        <div class="practice-prompt-v9">
+          <p>Quel caractère manque dans ce mot ?</p>
+          <strong class="history-missing-word-v9">${blankTargetV9(item.word,currentLesson.key)}</strong>
+          <button class="practice-audio-v9" onclick="speak(decodeURIComponent('${encV9(item.word)}'))">🔊 Écouter le mot</button>
+        </div>
+
+        <div class="practice-choices-v9 history-choice-grid-v9">
+          ${choices.map(choice => `
+            <button class="practice-choice-v9" onclick="selectHistoryMissingV9(this,'${choice}')">${choice}</button>
+          `).join("")}
+        </div>
+
+        <div id="historyMissingMessageV9" class="practice-message-v9"></div>
+        <div class="practice-actions-v9">
+          <button class="primary" onclick="validateHistoryMissingV9()">Valider</button>
+          <button class="secondary" onclick="stopAllAudio()">Stop lecture</button>
+        </div>
+        <div class="sound-bar-box"><div id="soundBar" class="sound-bar"></div></div>
+      </div>`;
+
+    setTimeout(() => speak(item.word),180);
+  }
+
+  window.selectHistoryMissingV9 = function(button,value){
+    historyMissingSelectedV9 = value;
+    document.querySelectorAll(".history-choice-grid-v9 .practice-choice-v9")
+      .forEach(btn => btn.classList.remove("selected"));
+    button?.classList.add("selected");
+  };
+
+  window.validateHistoryMissingV9 = function(){
+    if (historyValidationLockedV9) return;
+    const msg = document.getElementById("historyMissingMessageV9");
+    const correct = currentLesson.key.toUpperCase();
+    window.LumiAudio?.playValidation?.();
+
+    if (!historyMissingSelectedV9) {
+      if (msg) {
+        msg.textContent = currentLesson.type === "sound" ? "Choisis un son" : "Choisis une lettre";
+        msg.className = "practice-message-v9 bad";
+      }
+      return;
+    }
+
+    if (historyMissingSelectedV9 !== correct) {
+      historyMissingErrorsV9 += 1;
+      if (msg) {
+        msg.textContent = "Essaie encore";
+        msg.className = "practice-message-v9 bad";
+      }
+      window.LumiAudio?.playWrong?.();
+      historyMissingSelectedV9 = "";
+      document.querySelectorAll(".history-choice-grid-v9 .practice-choice-v9")
+        .forEach(btn => btn.classList.remove("selected"));
+      recordWrongAnswer();
+      return;
+    }
+
+    historyValidationLockedV9 = true;
+    if (msg) {
+      msg.textContent = "Bravo !";
+      msg.className = "practice-message-v9 good";
+    }
+    window.LumiAudio?.playCorrect?.();
+    rewardPlayer(7,0,2,null);
+    createConfetti();
+    historyMissingIndexV9 += 1;
+
+    if (historyMissingIndexV9 >= historyMissingQueueV9.length) {
+      const score = calculateExerciseStars(historyMissingErrorsV9);
+      setTimeout(() => {
+        historyValidationLockedV9 = false;
+        finishHistoryExerciseV9("exercise3",score);
+      },500);
+      return;
+    }
+
+    setTimeout(() => {
+      historyValidationLockedV9 = false;
+      historyMissingSelectedV9 = "";
+      renderHistoryMissingRoundV9();
+    },550);
+  };
+
+  /* ---------------------------------------------------------
+     PARCOURS D'ENTRAÎNEMENT COMPLÉMENTAIRE
+  --------------------------------------------------------- */
+  let practiceModeV9 = "letter";
+  let practiceKeyV9 = "A";
+  let practiceExerciseTypeV9 = "";
+  let practiceQuestionV9 = null;
+  let practiceSelectedV9 = "";
+  let practiceBuiltV9 = [];
+  let practiceErrorsV9 = 0;
+
+  const practiceScreenV9 = document.getElementById("readingExercisesScreen");
+  const previousHideAllScreensV9 = hideAllScreens;
+  hideAllScreens = function(){
+    previousHideAllScreensV9();
+    practiceScreenV9?.classList.add("hidden");
+  };
+
+  function practiceLessonV9(mode,key){
+    return mode === "sound" ? soundLessons[key] : letterLessons[key];
+  }
+
+  function normalizeTextV9(value){
+    return String(value ?? "")
+      .toLocaleLowerCase("fr")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[’']/g," ")
+      .replace(/[^\p{L}\p{N}\s]/gu,"")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
+  function targetV9(){
+    return practiceModeV9 === "sound"
+      ? practiceKeyV9.toLocaleLowerCase("fr")
+      : practiceKeyV9.toLocaleLowerCase("fr");
+  }
+
+  function wordHasTargetV9(word,target = targetV9()){
+    return String(word).toLocaleLowerCase("fr").includes(String(target).toLocaleLowerCase("fr"));
+  }
+
+  function allPracticeLessonsV9(){
+    return [
+      ...FULL_ALPHABET_V9.map(key => letterLessons[key]).filter(Boolean),
+      ...soundKeys.map(key => soundLessons[key]).filter(Boolean)
+    ];
+  }
+
+  function allWordsV9(){
+    const seen = new Set();
+    return allPracticeLessonsV9()
+      .flatMap(lesson => lesson.words || [])
+      .filter(item => {
+        const key = normalizeTextV9(item.word);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function allPhrasesV9(){
+    return [...new Set(
+      allPracticeLessonsV9().flatMap(lesson => lesson.phrases || [])
+    )];
+  }
+
+  function currentWordsV9(){
+    return practiceLessonV9(practiceModeV9,practiceKeyV9)?.words || [];
+  }
+
+  function currentPhrasesV9(){
+    return practiceLessonV9(practiceModeV9,practiceKeyV9)?.phrases || [];
+  }
+
+  function syllablePartsV9(item){
+    const cut = String(item?.cut || item?.word || "");
+    const parts = cut.split(/\s*\/\s*/).map(part => part.trim()).filter(Boolean);
+    return parts.length ? parts : [String(item?.word || "")];
+  }
+
+  function positiveWordsV9(){
+    const local = currentWordsV9().filter(item => wordHasTargetV9(item.word));
+    const global = allWordsV9().filter(item => wordHasTargetV9(item.word));
+    return local.length ? local : global;
+  }
+
+  function negativeWordsV9(){
+    return allWordsV9().filter(item => !wordHasTargetV9(item.word));
+  }
+
+  function uniqueItemsV9(items,keyFn){
+    const seen = new Set();
+    return items.filter(item => {
+      const key = keyFn(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function randomItemV9(items,fallback = null){
+    if (!items?.length) return fallback;
+    return items[Math.floor(Math.random() * items.length)];
+  }
+
+  function courseDescriptionV9(mode,key){
+    if (mode === "sound") {
+      return `Le groupe de lettres « ${key} » forme un son. Écoute les exemples avant de commencer les activités.`;
+    }
+    if (key === "H") {
+      return "La lettre H est souvent muette en français. On apprend surtout à la reconnaître dans les mots.";
+    }
+    return `La lettre ${key} peut se combiner avec les voyelles pour former des syllabes. Écoute les exemples puis entraîne-toi.`;
+  }
+
+  window.showReadingExercisesHome = function(mode = practiceModeV9){
+    practiceModeV9 = mode === "sound" ? "sound" : "letter";
+    hideAllScreens();
+    practiceScreenV9?.classList.remove("hidden");
+    document.getElementById("practiceChooserV9")?.classList.remove("hidden");
+    document.getElementById("practiceLessonPanelV9")?.classList.add("hidden");
+    renderPracticeChooserV9();
+    window.LumiAudio?.playMenu?.();
+  };
+
+  window.setPracticeModeV9 = function(mode){
+    practiceModeV9 = mode === "sound" ? "sound" : "letter";
+    document.getElementById("practiceChooserV9")?.classList.remove("hidden");
+    document.getElementById("practiceLessonPanelV9")?.classList.add("hidden");
+    renderPracticeChooserV9();
+  };
+
+  function renderPracticeChooserV9(){
+    const letterTab = document.getElementById("practiceLettersTabV9");
+    const soundTab = document.getElementById("practiceSoundsTabV9");
+    const title = document.getElementById("practiceChooserTitleV9");
+    const text = document.getElementById("practiceChooserTextV9");
+    const badge = document.getElementById("practiceChooserBadgeV9");
+    const grid = document.getElementById("practiceLessonsGridV9");
+
+    letterTab?.classList.toggle("active",practiceModeV9 === "letter");
+    soundTab?.classList.toggle("active",practiceModeV9 === "sound");
+
+    if (title) title.textContent = practiceModeV9 === "letter"
+      ? "Toutes les lettres de A à Z"
+      : "Tous les sons composés";
+    if (text) text.textContent = practiceModeV9 === "letter"
+      ? "Les six lettres absentes de l’histoire sont aussi disponibles ici."
+      : "Relis le rappel de cours puis choisis une activité complémentaire.";
+    if (badge) badge.textContent = practiceModeV9 === "letter" ? "Aa" : "ch";
+
+    const keys = practiceModeV9 === "letter" ? FULL_ALPHABET_V9 : soundKeys;
+    if (!grid) return;
+    grid.innerHTML = keys.map(key => {
+      const lesson = practiceLessonV9(practiceModeV9,key);
+      const count = Number(gameState.practiceProgress?.[`${practiceModeV9}:${key}`] || 0);
+      return `<button class="practice-letter-card-v9 ${practiceModeV9 === "sound" ? "sound" : ""}"
+        onclick="openPracticeLessonV9('${practiceModeV9}','${escapeHtmlV9(key)}')">
+        <strong>${escapeHtmlV9(practiceModeV9 === "letter" ? key : key)}</strong>
+        <small>${count ? `${count} exercice${count > 1 ? "s" : ""} réussi${count > 1 ? "s" : ""}` : "À découvrir"}</small>
+      </button>`;
+    }).join("");
+  }
+
+  window.openPracticeLessonV9 = function(mode,key){
+    practiceModeV9 = mode === "sound" ? "sound" : "letter";
+    practiceKeyV9 = key;
+    practiceExerciseTypeV9 = "";
+    window.LumiAudio?.stopBackground?.(true);
+    document.getElementById("practiceChooserV9")?.classList.add("hidden");
+    document.getElementById("practiceLessonPanelV9")?.classList.remove("hidden");
+    renderPracticeLessonV9();
+  };
+
+  window.closePracticeLessonV9 = function(){
+    stopAllAudio();
+    document.getElementById("practiceChooserV9")?.classList.remove("hidden");
+    document.getElementById("practiceLessonPanelV9")?.classList.add("hidden");
+    renderPracticeChooserV9();
+    window.LumiAudio?.playMenu?.();
+  };
+
+  function renderPracticeLessonV9(){
+    const content = document.getElementById("practiceLessonContentV9");
+    const lesson = practiceLessonV9(practiceModeV9,practiceKeyV9);
+    if (!content || !lesson) return;
+
+    const symbol = practiceModeV9 === "letter"
+      ? practiceKeyV9
+      : practiceKeyV9;
+    const chips = practiceModeV9 === "letter"
+      ? (lesson.syllables || []).map(item => item.syllable)
+      : [lesson.soundAudio || practiceKeyV9];
+    const examples = (lesson.words || []).slice(0,5);
+
+    content.innerHTML = `
+      <section class="practice-course-v9">
+        <div class="practice-course-symbol-v9">${escapeHtmlV9(symbol)}</div>
+        <div>
+          <small>Petit rappel de cours</small>
+          <h2>${practiceModeV9 === "letter" ? `La lettre ${escapeHtmlV9(practiceKeyV9)}` : `Le son ${escapeHtmlV9(practiceKeyV9)}`}</h2>
+          <p>${courseDescriptionV9(practiceModeV9,practiceKeyV9)}</p>
+          <div class="practice-course-chips-v9">
+            ${chips.map(chip => `<button onclick="practiceSpeakV9(decodeURIComponent('${encV9(chip)}'))">${escapeHtmlV9(chip)}</button>`).join("")}
+          </div>
+          <div class="practice-examples-v9">
+            ${examples.map(item => `<button onclick="practiceSpeakV9(decodeURIComponent('${encV9(item.word)}'))">🔊 ${escapeHtmlV9(item.word)}</button>`).join("")}
+          </div>
+        </div>
+      </section>
+
+      <div class="practice-exercise-heading-v9">
+        <small>Exercices complémentaires</small>
+        <h3>Choisis une activité</h3>
+      </div>
+
+      <div class="practice-exercise-grid-v9">
+        ${PRACTICE_TYPES_V9.map(exercise => `
+          <button class="practice-exercise-card-v9" onclick="startPracticeExerciseV9('${exercise.id}')">
+            <span>${exercise.icon}</span>
+            <span><strong>${exercise.title}</strong><em>${exercise.text}</em></span>
+            <b>→</b>
+          </button>
+        `).join("")}
+      </div>`;
+  }
+
+  window.practiceSpeakV9 = function(text){
+    stopAllAudio();
+    speak(text);
+  };
+
+  function makeWrongSpellingsV9(word){
+    const target = targetV9();
+    const alternatives = practiceModeV9 === "letter"
+      ? shuffleV9(FULL_ALPHABET_V9.filter(letter => letter.toLocaleLowerCase("fr") !== target)).slice(0,6)
+      : shuffleV9(soundKeys.filter(sound => sound !== target)).slice(0,6);
+    const lower = word.toLocaleLowerCase("fr");
+    const index = lower.indexOf(target);
+    const wrong = [];
+
+    alternatives.forEach(replacement => {
+      if (wrong.length >= 2) return;
+      let candidate;
+      if (index >= 0) {
+        candidate = word.slice(0,index) + replacement.toLocaleLowerCase("fr") + word.slice(index + target.length);
+      } else {
+        candidate = replacement.toLocaleLowerCase("fr") + word.slice(1);
+      }
+      if (normalizeTextV9(candidate) !== normalizeTextV9(word) && !wrong.includes(candidate)) {
+        wrong.push(candidate);
+      }
+    });
+
+    while (wrong.length < 2) {
+      wrong.push(word + (wrong.length ? "e" : "s"));
+    }
+    return wrong;
+  }
+
+  function chooseWordWithPartsV9(minParts = 2){
+    const candidates = currentWordsV9().filter(item => syllablePartsV9(item).length >= minParts);
+    return randomItemV9(candidates,currentWordsV9()[0]);
+  }
+
+  function makePracticeQuestionV9(type){
+    const positive = positiveWordsV9();
+    const negative = negativeWordsV9();
+    const lesson = practiceLessonV9(practiceModeV9,practiceKeyV9);
+
+    if (type === "hear") {
+      const shouldContain = Math.random() >= .5;
+      const item = randomItemV9(shouldContain ? positive : negative,randomItemV9(positive));
+      return {
+        type,
+        title:"J’entends ou je n’entends pas",
+        prompt:`Écoute le mot « ${item.word} ».`,
+        display:item.word,
+        audio:item.word,
+        choices:["J’entends","Je n’entends pas"],
+        answer:shouldContain ? "J’entends" : "Je n’entends pas"
+      };
+    }
+
+    if (type === "intruder") {
+      const positives = uniqueItemsV9(shuffleV9(positive),item => normalizeTextV9(item.word)).slice(0,3);
+      while (positives.length < 3 && positive.length) positives.push(randomItemV9(positive));
+      const intruder = randomItemV9(negative,randomItemV9(allWordsV9()));
+      const choices = shuffleV9([...positives.map(item => item.word),intruder.word]);
+      return {
+        type,
+        title:"Trouve l’intrus",
+        prompt:`Un seul mot ne contient pas ${practiceModeV9 === "letter" ? "la lettre" : "le son"} « ${practiceKeyV9} ».`,
+        display:"Quel est l’intrus ?",
+        choices,
+        answer:intruder.word
+      };
+    }
+
+    if (type === "position") {
+      const item = randomItemV9(positive,currentWordsV9()[0]);
+      const lower = item.word.toLocaleLowerCase("fr");
+      const target = targetV9();
+      const index = Math.max(0,lower.indexOf(target));
+      const end = index + target.length;
+      const answer = index === 0 ? "Au début" : end >= lower.length ? "À la fin" : "Au milieu";
+      return {
+        type,
+        title:"Où entends-tu le son ?",
+        prompt:`Écoute le mot « ${item.word} ».`,
+        display:item.word,
+        audio:item.word,
+        choices:["Au début","Au milieu","À la fin"],
+        answer
+      };
+    }
+
+    if (type === "orderSyllables" || type === "buildWord") {
+      const item = chooseWordWithPartsV9(2);
+      const parts = syllablePartsV9(item);
+      return {
+        type,
+        title:type === "buildWord" ? "Construis le mot entendu" : "Remets les syllabes dans l’ordre",
+        prompt:type === "buildWord" ? "Écoute puis reconstruis le mot." : `Reconstruis le mot « ${item.word} ».`,
+        display:type === "buildWord" ? "🔊 Mot à écouter" : item.word,
+        audio:item.word,
+        tokens:shuffleV9(parts.map((value,index) => ({ id:`${index}-${Math.random()}`,value }))),
+        answer:parts
+      };
+    }
+
+    if (type === "missingSyllable") {
+      const item = chooseWordWithPartsV9(2);
+      const parts = syllablePartsV9(item);
+      const missingIndex = Math.floor(Math.random() * parts.length);
+      const answer = parts[missingIndex];
+      const displayParts = parts.map((part,index) => index === missingIndex ? "□" : part);
+      const otherParts = allWordsV9().flatMap(syllablePartsV9).filter(part => normalizeTextV9(part) !== normalizeTextV9(answer));
+      const choices = shuffleV9([answer,...shuffleV9([...new Set(otherParts)]).slice(0,2)]);
+      return {
+        type,
+        title:"Retrouve la syllabe manquante",
+        prompt:`Complète le mot « ${item.word} ».`,
+        display:displayParts.join(" / "),
+        audio:item.word,
+        choices,
+        answer
+      };
+    }
+
+    if (type === "spelling") {
+      const item = randomItemV9(positive,currentWordsV9()[0]);
+      const wrong = makeWrongSpellingsV9(item.word);
+      return {
+        type,
+        title:"Choisis la bonne écriture",
+        prompt:"Écoute le mot et retrouve son écriture.",
+        display:"Quel mot est bien écrit ?",
+        audio:item.word,
+        choices:shuffleV9([item.word,...wrong]),
+        answer:item.word
+      };
+    }
+
+    if (type === "dictation") {
+      const item = randomItemV9(positive,currentWordsV9()[0]);
+      return {
+        type,
+        title:"Écris le mot entendu",
+        prompt:"Écoute attentivement puis écris le mot.",
+        display:"Petite dictée",
+        audio:item.word,
+        input:true,
+        answer:item.word
+      };
+    }
+
+    if (type === "orderSentence") {
+      const phrase = randomItemV9(currentPhrasesV9(),randomItemV9(allPhrasesV9(),"Lumi apprend en jouant."));
+      const clean = phrase.replace(/[.!?]+$/,"");
+      const words = clean.split(/\s+/).filter(Boolean);
+      return {
+        type,
+        title:"Remets la phrase dans l’ordre",
+        prompt:"Replace les mots dans le bon ordre.",
+        display:"Construis la phrase.",
+        tokens:shuffleV9(words.map((value,index) => ({ id:`${index}-${Math.random()}`,value }))),
+        answer:words
+      };
+    }
+
+    if (type === "missingWord") {
+      const phrase = randomItemV9(currentPhrasesV9(),randomItemV9(allPhrasesV9(),"Lumi regarde les étoiles."));
+      const cleanWords = phrase.replace(/[.!?]+$/,"").split(/\s+/).filter(Boolean);
+      const targetWords = cleanWords.filter(word => normalizeTextV9(word).length > 2);
+      const answer = randomItemV9(targetWords,cleanWords[cleanWords.length - 1]);
+      let replaced = false;
+      const display = cleanWords.map(word => {
+        if (!replaced && normalizeTextV9(word) === normalizeTextV9(answer)) {
+          replaced = true;
+          return "□";
+        }
+        return word;
+      }).join(" ") + ".";
+      const distractors = shuffleV9(allWordsV9().map(item => item.word)
+        .filter(word => normalizeTextV9(word) !== normalizeTextV9(answer))).slice(0,2);
+      return {
+        type,
+        title:"Retrouve le mot manquant",
+        prompt:"Quel mot complète correctement la phrase ?",
+        display,
+        choices:shuffleV9([answer,...distractors]),
+        answer
+      };
+    }
+
+    if (type === "chooseSentence") {
+      const phrase = randomItemV9(currentPhrasesV9(),randomItemV9(allPhrasesV9(),"Lumi apprend en jouant."));
+      const distractors = shuffleV9(allPhrasesV9().filter(value => value !== phrase)).slice(0,2);
+      return {
+        type,
+        title:"Choisis la bonne phrase",
+        prompt:"Écoute puis sélectionne la phrase entendue.",
+        display:"Quelle phrase as-tu entendue ?",
+        audio:phrase,
+        choices:shuffleV9([phrase,...distractors]),
+        answer:phrase
+      };
+    }
+
+    return makePracticeQuestionV9("hear");
+  }
+
+  window.startPracticeExerciseV9 = function(type){
+    practiceExerciseTypeV9 = type;
+    practiceErrorsV9 = 0;
+    window.LumiAudio?.stopBackground?.(true);
+    renderNextPracticeQuestionV9();
+  };
+
+  function renderNextPracticeQuestionV9(){
+    practiceQuestionV9 = makePracticeQuestionV9(practiceExerciseTypeV9);
+    practiceSelectedV9 = "";
+    practiceBuiltV9 = [];
+    renderPracticeQuestionV9();
+  }
+
+  function renderPracticeQuestionV9(){
+    const content = document.getElementById("practiceLessonContentV9");
+    const q = practiceQuestionV9;
+    if (!content || !q) return;
+
+    let answerArea = "";
+
+    if (q.tokens) {
+      answerArea = `
+        <div id="practiceBuiltAnswerV9" class="practice-built-answer-v9 empty">Clique sur les éléments dans le bon ordre.</div>
+        <div class="practice-choices-v9">
+          ${q.tokens.map(token => `
+            <button id="practiceToken-${escapeHtmlV9(token.id)}" class="practice-choice-v9 token"
+              onclick="practiceAddTokenV9('${escapeHtmlV9(token.id)}')">${escapeHtmlV9(token.value)}</button>
+          `).join("")}
+        </div>`;
+    } else if (q.input) {
+      answerArea = `<input id="practiceInputV9" class="practice-input-v9" autocomplete="off" placeholder="Écris ta réponse">`;
+    } else {
+      answerArea = `<div class="practice-choices-v9 ${q.choices?.length === 3 ? "history-choice-grid-v9" : ""}">
+        ${(q.choices || []).map(choice => `
+          <button class="practice-choice-v9"
+            onclick="practiceSelectV9(this,decodeURIComponent('${encV9(choice)}'))">${escapeHtmlV9(choice)}</button>
+        `).join("")}
+      </div>`;
+    }
+
+    content.innerHTML = `
+      <section class="practice-stage-v9">
+        <div class="practice-stage-top-v9">
+          <div>
+            <small>${practiceModeV9 === "letter" ? `Lettre ${escapeHtmlV9(practiceKeyV9)}` : `Son ${escapeHtmlV9(practiceKeyV9)}`}</small>
+            <h3>${escapeHtmlV9(q.title)}</h3>
+          </div>
+          <button onclick="renderPracticeLessonV9()">Changer d’exercice</button>
+        </div>
+
+        <div class="practice-prompt-v9">
+          <p>${escapeHtmlV9(q.prompt)}</p>
+          <strong>${escapeHtmlV9(q.display)}</strong>
+          ${q.audio ? `<button class="practice-audio-v9" onclick="practiceSpeakV9(decodeURIComponent('${encV9(q.audio)}'))">🔊 Écouter</button>` : ""}
+        </div>
+
+        ${answerArea}
+        <div id="practiceMessageV9" class="practice-message-v9"></div>
+        <div class="practice-actions-v9">
+          <button class="primary" onclick="validatePracticeV9()">Valider</button>
+          ${q.tokens
+            ? `<button class="secondary" onclick="undoPracticeTokenV9()">Effacer le dernier</button>`
+            : q.audio
+              ? `<button class="secondary" onclick="practiceSpeakV9(decodeURIComponent('${encV9(q.audio)}'))">Réécouter</button>`
+              : `<button class="secondary" onclick="renderPracticeLessonV9()">Voir le rappel</button>`}
+        </div>
+      </section>`;
+
+    if (q.input) {
+      document.getElementById("practiceInputV9")?.addEventListener("keydown",event => {
+        if (event.key === "Enter") validatePracticeV9();
+      });
+    }
+
+    if (q.audio) setTimeout(() => speak(q.audio),180);
+  }
+
+  window.practiceSelectV9 = function(button,value){
+    practiceSelectedV9 = value;
+    document.querySelectorAll(".practice-choice-v9").forEach(btn => btn.classList.remove("selected"));
+    button?.classList.add("selected");
+  };
+
+  window.practiceAddTokenV9 = function(id){
+    const token = practiceQuestionV9?.tokens?.find(item => item.id === id);
+    if (!token) return;
+    const button = document.getElementById(`practiceToken-${id}`);
+    if (button?.disabled) return;
+    practiceBuiltV9.push(token);
+    if (button) button.disabled = true;
+    updatePracticeBuiltAnswerV9();
+  };
+
+  window.undoPracticeTokenV9 = function(){
+    const token = practiceBuiltV9.pop();
+    if (token) {
+      const button = document.getElementById(`practiceToken-${token.id}`);
+      if (button) button.disabled = false;
+    }
+    updatePracticeBuiltAnswerV9();
+  };
+
+  function updatePracticeBuiltAnswerV9(){
+    const box = document.getElementById("practiceBuiltAnswerV9");
+    if (!box) return;
+    box.textContent = practiceBuiltV9.length
+      ? practiceBuiltV9.map(item => item.value).join(" ")
+      : "Clique sur les éléments dans le bon ordre.";
+    box.classList.toggle("empty",practiceBuiltV9.length === 0);
+  }
+
+  function practiceAnswerV9(){
+    if (practiceQuestionV9?.input) {
+      return document.getElementById("practiceInputV9")?.value || "";
+    }
+    if (practiceQuestionV9?.tokens) {
+      return practiceBuiltV9.map(item => item.value);
+    }
+    return practiceSelectedV9;
+  }
+
+  function answersMatchV9(answer,expected){
+    if (Array.isArray(expected)) {
+      if (!Array.isArray(answer) || answer.length !== expected.length) return false;
+      return answer.every((value,index) =>
+        normalizeTextV9(value) === normalizeTextV9(expected[index])
+      );
+    }
+    return normalizeTextV9(answer) === normalizeTextV9(expected);
+  }
+
+  window.validatePracticeV9 = function(){
+    const msg = document.getElementById("practiceMessageV9");
+    const answer = practiceAnswerV9();
+    const empty = Array.isArray(answer) ? !answer.length : !String(answer || "").trim();
+
+    window.LumiAudio?.playValidation?.();
+
+    if (empty) {
+      if (msg) {
+        msg.textContent = "Choisis ou écris une réponse.";
+        msg.className = "practice-message-v9 bad";
+      }
+      return;
+    }
+
+    if (!answersMatchV9(answer,practiceQuestionV9.answer)) {
+      practiceErrorsV9 += 1;
+      if (msg) {
+        msg.textContent = "Essaie encore.";
+        msg.className = "practice-message-v9 bad";
+      }
+      window.LumiAudio?.playWrong?.();
+      recordWrongAnswer();
+      return;
+    }
+
+    window.LumiAudio?.playCorrect?.();
+    createConfetti();
+    rewardPlayer(5,0,1,null);
+
+    if (!gameState.practiceProgress) gameState.practiceProgress = {};
+    const key = `${practiceModeV9}:${practiceKeyV9}`;
+    gameState.practiceProgress[key] = Number(gameState.practiceProgress[key] || 0) + 1;
+    saveGameState();
+
+    const content = document.getElementById("practiceLessonContentV9");
+    if (content) {
+      content.innerHTML = `
+        <section class="practice-result-v9">
+          <div class="icon">✓</div>
+          <h3>Bravo !</h3>
+          <p>Exercice réussi${practiceErrorsV9 ? ` après ${practiceErrorsV9} erreur${practiceErrorsV9 > 1 ? "s" : ""}` : " sans erreur"}.</p>
+          <p>Tu gagnes 5 XP et 1 pièce. Les étoiles de l’histoire restent réservées au parcours principal.</p>
+          <div class="practice-actions-v9">
+            <button class="primary" onclick="nextPracticeQuestionV9()">Question suivante</button>
+            <button class="secondary" onclick="renderPracticeLessonV9()">Choisir un autre exercice</button>
+          </div>
+        </section>`;
+    }
+  };
+
+  window.nextPracticeQuestionV9 = function(){
+    practiceErrorsV9 = 0;
+    renderNextPracticeQuestionV9();
+  };
+
+  window.renderPracticeLessonV9 = renderPracticeLessonV9;
+
+  /* Après correction d'une ancienne erreur, empêcher l'ancien plafond de 3
+     de recréditer une étoile supplémentaire. */
+  const previousValidateMistakeV9 = window.validateMistakeAnswer;
+  if (typeof previousValidateMistakeV9 === "function") {
+    window.validateMistakeAnswer = function(...args){
+      const result = previousValidateMistakeV9.apply(this,args);
+      setTimeout(() => {
+        normalizeHistoryRewardsV9(false);
+        normalizeSoundRewardsV9();
+        saveGameState();
+        updateGameUi();
+      },0);
+      return result;
+    };
+  }
+
+  /* Les outils administrateur restent compatibles avec le nouveau 2+2+2. */
+  ["adminCompleteCurrentWorld","adminCompleteAllWorlds"].forEach(name => {
+    const original = window[name];
+    if (typeof original !== "function") return;
+    window[name] = function(...args){
+      const result = original.apply(this,args);
+      normalizeHistoryRewardsV9(true);
+      saveGameState();
+      updateGameUi();
+      return result;
+    };
+  });
+
+  /* Les cartes du parcours des sons affichent maintenant le nouveau maximum 6. */
+  renderSoundsGrid = function(){
+    ensureLearningProgress();
+    const lockPanel = document.getElementById("soundsLockPanel");
+    const allLettersDone = areAllLettersCompleted();
+
+    if (!allLettersDone) {
+      lockPanel?.classList.remove("hidden");
+      soundsGrid.className = "lesson-grid";
+      soundsGrid.innerHTML = "";
+      updateGameUi();
+      return;
+    }
+
+    lockPanel?.classList.add("hidden");
+    soundsGrid.className = "lesson-grid path-grid";
+    soundsGrid.innerHTML = "";
+
+    soundKeys.forEach(sound => {
+      const lesson = soundLessons[sound];
+      const progress = getProgress("sound",sound);
+      const stateClass = progress.completed ? "completed" : progress.unlocked ? "current" : "locked";
+      const stateText = progress.completed ? "Terminé" : progress.unlocked ? "À jouer" : "Bloqué";
+      const click = progress.unlocked
+        ? `openLesson('${sound}','sound')`
+        : `showLockedLessonMessage('${sound}')`;
+
+      soundsGrid.innerHTML += `
+        <div class="path-node ${stateClass}" data-path-id="sound-${sound}">
+          <span class="path-state">${stateText}</span>
+          <div class="lesson-card ${progress.completed ? "mastered" : ""}" onclick="${click}">
+            <div class="lesson-icon"><img src="${lesson.image}" alt=""></div>
+            <h2>${lesson.title}</h2>
+            <p>${progress.completed
+              ? `${getTotalLessonStars("sound",sound)} / 6 étoiles`
+              : lesson.words.map(word => word.word).join(" · ")}</p>
+          </div>
+        </div>`;
+    });
+
+    animatePendingUnlock();
+  };
+
+  updateGameUi();
+})();
