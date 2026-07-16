@@ -323,3 +323,76 @@
     max-width:31% !important;
   }
 }
+
+
+/* =========================================================
+   CORRECTIF MOBILE V7 — PROGRESSION ENTIÈREMENT DANS LA SCÈNE
+========================================================= */
+@media(max-width:700px){
+  .chapter-one-active .chapter3d-progress,
+  .chapter-two-active .chapter3d-progress,
+  .chapter-three-active .chapter3d-progress,
+  .chapter-four-active .chapter3d-progress,
+  .chapter-five-active .chapter3d-progress{
+    left:auto !important;
+    right:2.2% !important;
+    top:2.2% !important;
+    width:31% !important;
+    max-width:31% !important;
+    min-width:0 !important;
+    padding:5px 6px !important;
+    border-radius:11px !important;
+
+    /* Le translateZ décalait visuellement le panneau hors du décor sur iPhone. */
+    transform:none !important;
+    box-sizing:border-box !important;
+    overflow:hidden !important;
+  }
+
+  .chapter3d-progress-copy{
+    min-width:0 !important;
+    overflow:hidden !important;
+  }
+
+  .chapter3d-progress-copy small,
+  .chapter3d-progress-copy strong{
+    max-width:100% !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .chapter3d-progress-copy small{
+    font-size:5.5px !important;
+    letter-spacing:.045em !important;
+    line-height:1.05 !important;
+  }
+
+  .chapter3d-progress-copy strong{
+    font-size:8.5px !important;
+    line-height:1.05 !important;
+  }
+
+  .chapter3d-dots{
+    gap:3px !important;
+    margin:4px 0 !important;
+    flex-wrap:nowrap !important;
+  }
+
+  .chapter3d-dots span{
+    flex:0 0 auto !important;
+    width:10px !important;
+    height:10px !important;
+  }
+}
+
+@media(max-width:390px){
+  .chapter-one-active .chapter3d-progress,
+  .chapter-two-active .chapter3d-progress,
+  .chapter-three-active .chapter3d-progress,
+  .chapter-four-active .chapter3d-progress,
+  .chapter-five-active .chapter3d-progress{
+    right:2% !important;
+    width:32% !important;
+    max-width:32% !important;
+  }
+}
