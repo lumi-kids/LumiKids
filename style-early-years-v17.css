@@ -1,0 +1,179 @@
+/* =========================================================
+   LUMIKIDS V17 — FINALISATION PETITE & MOYENNE SECTION
+========================================================= */
+
+html,body{max-width:100%;overflow-x:hidden}
+body.game-ui-v14 .game-header,
+body.game-ui-v14 .game-header>*{box-sizing:border-box;min-width:0}
+body.game-ui-v14 .game-header{overflow:hidden;contain:layout paint}
+body.game-ui-v14 .brand-button{overflow:hidden}
+body.game-ui-v14 .brand-button>div:last-child{min-width:0;overflow:hidden}
+body.game-ui-v14 .brand-button h1,
+body.game-ui-v14 .brand-button .badge{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.game-hud-player-v14{min-width:0;max-width:100%;overflow:hidden;align-self:center}
+.game-hud-identity-v14{min-width:0;overflow:hidden}
+body.game-ui-v14 .top-resources{min-width:0;max-width:100%;overflow:hidden;flex-shrink:0}
+
+@media (min-width:901px){
+  body.game-ui-v14 .game-header{
+    width:auto!important;
+    max-width:calc(100vw - var(--game-nav-width) - 22px)!important;
+    min-height:76px!important;
+    height:76px!important;
+    grid-template-columns:minmax(150px,220px) minmax(0,1fr) max-content!important;
+    align-items:center!important;
+  }
+  .game-hud-player-v14{
+    height:56px!important;
+    max-height:56px!important;
+    padding:5px 8px!important;
+    grid-template-columns:42px minmax(110px,1fr) 60px 68px!important;
+  }
+  .game-hud-identity-v14>div{margin-bottom:4px!important}
+  .game-hud-xp-v14{height:7px!important}
+  .game-hud-level-v14,.game-hud-streak-v14{padding:6px 8px!important;min-width:0!important}
+  body.game-ui-v14 .top-resources>span{min-width:60px!important;padding:8px 9px!important}
+}
+@media (min-width:901px) and (max-width:1450px){
+  body.game-ui-v14 .game-header{grid-template-columns:minmax(120px,180px) minmax(0,1fr) max-content!important;gap:10px!important}
+  body.game-ui-v14 .brand-button .badge{display:none!important}
+  .game-hud-streak-v14{display:none!important}
+  .game-hud-player-v14{grid-template-columns:40px minmax(90px,1fr) 56px!important}
+}
+@media (min-width:901px) and (max-width:1120px){
+  body.game-ui-v14 .game-header{grid-template-columns:60px minmax(0,1fr) max-content!important}
+  body.game-ui-v14 .brand-button>div:last-child{display:none!important}
+  .game-hud-level-v14{display:none!important}
+  .game-hud-player-v14{grid-template-columns:40px minmax(70px,1fr)!important}
+  body.game-ui-v14 .top-resources>span{min-width:48px!important;padding:7px!important}
+}
+@media (max-width:900px){
+  body.game-ui-v14 .game-header{overflow:hidden!important}
+  .game-hud-player-v14{max-height:52px!important}
+  body.game-ui-v14 .top-resources{overflow:visible}
+}
+
+/* Niveau de difficulté lisible sur chaque carte. */
+.ms-activity-card-v15{position:relative;isolation:isolate}
+.early-tier-v17{
+  position:absolute;top:12px;right:12px;z-index:2;
+  max-width:48%;padding:5px 8px;border-radius:999px;
+  background:rgba(255,255,255,.88);color:var(--card-color,#52617d);
+  font-size:9px;font-weight:950;letter-spacing:.05em;text-transform:uppercase;
+  box-shadow:0 5px 13px rgba(31,45,65,.08);
+}
+.ps-activity-card-v16 .early-tier-v17{text-transform:none;letter-spacing:0;font-size:10px}
+
+/* Tableau de bord hebdomadaire Parents. */
+.early-parent-v17{
+  margin:22px 0;padding:22px;border-radius:25px;
+  background:linear-gradient(145deg,#f5fbf8,#edf4ff);
+  border:1px solid #dfece6;
+}
+.early-parent-v17 header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+.early-parent-v17 header small{display:block;color:#43846a;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
+.early-parent-v17 h3{margin:3px 0 0;font-size:24px}
+.early-parent-v17 .early-week-goal-v17{padding:7px 11px;border-radius:999px;background:#fff;font-weight:900;color:#53677b}
+.early-week-grid-v17{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.early-week-grid-v17 article{padding:14px;border-radius:18px;background:#fff;box-shadow:0 7px 20px rgba(30,53,70,.06)}
+.early-week-grid-v17 span{display:block;font-size:22px;margin-bottom:4px}
+.early-week-grid-v17 strong{display:block;font-size:21px}
+.early-week-grid-v17 small{color:#718078;font-weight:800}
+.early-week-days-v17{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:14px}
+.early-week-days-v17 div{min-height:58px;padding:8px 4px;border-radius:14px;background:#fff;text-align:center}
+.early-week-days-v17 b,.early-week-days-v17 small{display:block}
+.early-week-days-v17 b{font-size:11px}.early-week-days-v17 small{margin-top:5px;color:#708078;font-size:10px}
+.early-week-days-v17 .active{background:#dff8e9;color:#246b48}
+
+/* Résultat enrichi avec la suite conseillée. */
+.early-result-next-v17{margin-top:16px;padding:15px;border-radius:18px;background:#f2f8ff;border:1px solid #dceaff}
+.early-result-next-v17 small{display:block;color:#5a7186;font-weight:800;margin-bottom:8px}
+.early-result-next-v17 button{width:100%;border:0;border-radius:14px;padding:13px 15px;background:#375fd2;color:#fff;font-weight:950;cursor:pointer}
+
+.early-audio-status-v17{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#eef7ff;color:#597080;font-size:11px;font-weight:850}
+
+@media (max-width:700px){
+  .early-tier-v17{top:9px;right:9px;font-size:8px;padding:4px 6px}
+  .early-parent-v17{padding:16px;border-radius:20px}
+  .early-parent-v17 header{display:block}.early-parent-v17 .early-week-goal-v17{display:inline-block;margin-top:9px}
+  .early-week-grid-v17{grid-template-columns:repeat(2,1fr)}
+  .early-week-days-v17{gap:4px}.early-week-days-v17 div{min-height:50px;padding:6px 2px}.early-week-days-v17 b{font-size:9px}.early-week-days-v17 small{font-size:8px}
+}
+
+
+/* =========================================================
+   V17.1 — HUD lisible et stable
+   Le bouton Retour masqué ne doit plus décaler Champion,
+   la classe et le niveau dans les mauvaises colonnes.
+========================================================= */
+@media (min-width:901px){
+  .game-hud-back-v14{grid-column:1!important}
+  .game-hud-identity-v14{grid-column:2!important}
+  .game-hud-level-v14{grid-column:3!important}
+  .game-hud-streak-v14{grid-column:4!important}
+
+  .game-hud-identity-v14>div{
+    display:grid!important;
+    grid-template-columns:minmax(0,max-content) max-content!important;
+    grid-template-areas:
+      "player class"
+      "screen screen"!important;
+    justify-content:start!important;
+    align-items:center!important;
+    column-gap:8px!important;
+    row-gap:1px!important;
+    margin-bottom:5px!important;
+  }
+
+  #gameHudNameV14{
+    grid-area:player;
+    min-width:0;
+    max-width:220px;
+    font-size:14px!important;
+    line-height:1.1!important;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+
+  #gameHudScreenV14{
+    grid-area:screen;
+    min-width:0;
+    max-width:280px;
+    color:#c9d3ea!important;
+    font-size:10px!important;
+    line-height:1.15!important;
+    font-weight:850!important;
+    letter-spacing:.02em!important;
+    text-transform:none!important;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+
+  #gameClassBadgeV15{
+    grid-area:class;
+    align-self:center;
+    margin:0!important;
+    padding:3px 7px!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+}
+
+@media (min-width:901px) and (max-width:1450px){
+  .game-hud-streak-v14{grid-column:auto!important}
+}
+
+@media (min-width:901px) and (max-width:1120px){
+  .game-hud-level-v14{grid-column:auto!important}
+  #gameHudNameV14{max-width:150px}
+  #gameHudScreenV14{max-width:190px}
+}
+
+/* Évite aussi un décalage semblable sur tablette. */
+@media (min-width:421px) and (max-width:900px){
+  .game-hud-back-v14{grid-column:1}
+  .game-hud-identity-v14{grid-column:2}
+  .game-hud-level-v14{grid-column:3}
+}

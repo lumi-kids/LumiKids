@@ -10,10 +10,12 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="icon" href="icon.png">
-  <link rel="stylesheet" href="style.css?v=game-ui-v14-1">
-  <link rel="stylesheet" href="style-maths.css?v=game-ui-v14-1">
+  <link rel="stylesheet" href="style.css?v=parent-hud-v17-1">
+  <link rel="stylesheet" href="style-maths.css?v=parent-hud-v17-1">
+  <link rel="stylesheet" href="style-ms.css?v=parent-hud-v17-1">
+  <link rel="stylesheet" href="style-ps.css?v=parent-hud-v17-1">
 
-  <link rel="stylesheet" href="positions.css?v=game-ui-v14-1">
+  <link rel="stylesheet" href="positions.css?v=parent-hud-v17-1">
 
   <style id="lumikids-settings-v1-2">
     .top-resources{
@@ -265,8 +267,9 @@
       .lumi-panel-header h2{font-size:27px;}
     }
   </style>
+  <link rel="stylesheet" href="style-parent-hud-v17-1.css?v=parent-hud-v17-1">
 </head>
-<body class="game-ui-v14-1">
+<body class="game-ui-v14-1 classes-ms-v15">
   <div class="sky-decoration sky-one"></div>
   <div class="sky-decoration sky-two"></div>
 
@@ -991,13 +994,152 @@
   <div id="achievementToastV10" class="achievement-toast-v10 hidden" role="status" aria-live="polite"></div>
   <div id="confettiBox"></div>
 
-  <script src="script.js?v=game-ui-v14-1"></script>
-    <script src="script-maths.js?v=game-ui-v14-1"></script>
-    <script src="script-navigation.js?v=game-ui-v14-1"></script>
-    <script src="script-game-ui.js?v=game-ui-v14-1"></script>
+
+  <!-- LUMIKIDS CLASS SELECTOR V16.2 START -->
+  <div id="classChoiceOverlayV15" class="class-choice-overlay-v15 hidden" role="dialog" aria-modal="true" aria-labelledby="classChoiceTitleV15">
+    <section class="class-choice-panel-v15">
+      <small>Bienvenue dans LumiKids</small>
+      <h2 id="classChoiceTitleV15">Choisis la classe de l’enfant</h2>
+      <p>Le contenu, les consignes et la progression seront adaptés à son niveau. Le choix pourra être modifié depuis l’espace Parents.</p>
+
+      <div class="class-choice-grid-v15">
+        <button type="button" class="class-choice-card-v15 ps" data-lumikids-class="ps" data-school-level-v15="ps" onclick="return LumiKidsSelectClassV162('ps')">
+          <span class="class-choice-icon-v15">🧸</span>
+          <em>Programme complet</em>
+          <strong>Petite Section</strong>
+          <span class="class-choice-description-v162">Vocabulaire, corps, couleurs, quantités jusqu’à 5, formes, espace et logique.</span>
+          <b>Choisir la PS →</b>
+        </button>
+
+        <button type="button" class="class-choice-card-v15 ms" data-lumikids-class="ms" data-school-level-v15="ms" onclick="return LumiKidsSelectClassV162('ms')">
+          <span class="class-choice-icon-v15">🎨</span>
+          <em>Programme complet</em>
+          <strong>Moyenne Section</strong>
+          <span class="class-choice-description-v162">Lettres capitales, syllabes, rimes, nombres jusqu’à 10, formes et logique.</span>
+          <b>Choisir la MS →</b>
+        </button>
+
+        <button type="button" class="class-choice-card-v15 gs" data-lumikids-class="gs-cp" data-school-level-v15="gs-cp" onclick="return LumiKidsSelectClassV162('gs-cp')">
+          <span class="class-choice-icon-v15">📚</span>
+          <em>Aventure actuelle</em>
+          <strong>GS / début CP</strong>
+          <span class="class-choice-description-v162">Royaumes, lecture, sons, phrases, calculs et exercices avancés.</span>
+          <b>Choisir GS / début CP →</b>
+        </button>
+      </div>
+
+      <p class="class-choice-footer-v15">Changer de classe ne supprime aucune progression déjà enregistrée.</p>
+      <button id="classChoiceCloseV15" type="button" class="class-choice-close-v15 hidden" onclick="closeClassChoiceV15()">Annuler</button>
+      <div id="classChoiceStatusV162" class="class-choice-status-v162" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <script>
+  (function installIndependentClassSelectorV162(){
+    "use strict";
+    if (window.__lumikidsClassSelectorV162Installed) return;
+    window.__lumikidsClassSelectorV162Installed = true;
+
+    var CLASS_KEY = "lumikids-school-level-v15";
+    var STATE_KEY = "lumikids-state";
+    var VALID_LEVELS = {"ps":true,"ms":true,"gs-cp":true};
+    var selecting = false;
+
+    function readSavedLevel(){
+      try {
+        var direct = localStorage.getItem(CLASS_KEY);
+        if (VALID_LEVELS[direct]) return direct;
+        var savedState = JSON.parse(localStorage.getItem(STATE_KEY) || "{}");
+        return VALID_LEVELS[savedState.schoolLevelV15] ? savedState.schoolLevelV15 : "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function persistLevel(level){
+      try {
+        localStorage.setItem(CLASS_KEY, level);
+        var savedState = {};
+        try { savedState = JSON.parse(localStorage.getItem(STATE_KEY) || "{}"); }
+        catch (error) { savedState = {}; }
+        savedState.schoolLevelV15 = level;
+        localStorage.setItem(STATE_KEY, JSON.stringify(savedState));
+      } catch (error) {}
+    }
+
+    function labelFor(level){
+      if (level === "ps") return "Petite Section";
+      if (level === "ms") return "Moyenne Section";
+      return "GS / début CP";
+    }
+
+    function revealSelector(allowClose){
+      var overlay = document.getElementById("classChoiceOverlayV15");
+      if (!overlay) return;
+      overlay.classList.remove("hidden", "class-choice-confirmed-v162");
+      overlay.style.display = "grid";
+      overlay.style.pointerEvents = "auto";
+      var close = document.getElementById("classChoiceCloseV15");
+      if (close) close.classList.toggle("hidden", !allowClose || !readSavedLevel());
+      document.body.classList.add("class-choice-open-v15");
+      selecting = false;
+    }
+
+    window.LumiKidsOpenClassSelectorV162 = revealSelector;
+
+    window.LumiKidsSelectClassV162 = function(level){
+      if (!VALID_LEVELS[level] || selecting) return false;
+      selecting = true;
+      persistLevel(level);
+
+      var overlay = document.getElementById("classChoiceOverlayV15");
+      var status = document.getElementById("classChoiceStatusV162");
+      if (status) status.textContent = labelFor(level) + " sélectionnée…";
+      if (overlay) {
+        overlay.classList.add("class-choice-confirmed-v162");
+        overlay.querySelectorAll("[data-lumikids-class]").forEach(function(card){
+          card.disabled = true;
+          card.classList.toggle("selected-v162", card.getAttribute("data-lumikids-class") === level);
+        });
+      }
+
+      /* Le rechargement volontaire garantit que les trois modules repartent
+         tous avec la même classe, même si un ancien script ou cache était actif. */
+      window.setTimeout(function(){ window.location.reload(); }, 180);
+      return false;
+    };
+
+    function handleSelectionEvent(event){
+      var target = event.target;
+      if (!target || !target.closest) return;
+      var card = target.closest("[data-lumikids-class]");
+      if (!card) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      window.LumiKidsSelectClassV162(card.getAttribute("data-lumikids-class"));
+    }
+
+    /* Capture + onclick : double sécurité pour souris, tactile et PWA. */
+    document.addEventListener("pointerup", handleSelectionEvent, true);
+    document.addEventListener("click", handleSelectionEvent, true);
+
+    var saved = readSavedLevel();
+    if (!saved) revealSelector(false);
+  })();
+  </script>
+  <!-- LUMIKIDS CLASS SELECTOR V16.2 END -->
+
+  <script src="script.js?v=parent-hud-v17-1"></script>
+    <script src="script-maths.js?v=parent-hud-v17-1"></script>
+    <script src="script-navigation.js?v=parent-hud-v17-1"></script>
+    <script src="script-game-ui.js?v=parent-hud-v17-1"></script>
+    <script src="script-ms.js?v=parent-hud-v17-1"></script>
+    <script src="script-ps.js?v=parent-hud-v17-1"></script>
+    <script src="script-parent-hud-v17-1.js?v=parent-hud-v17-1"></script>
 <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=game-ui-v14-1");
+      navigator.serviceWorker.register("service-worker.js?v=parent-hud-v17-1");
     }
   </script>
 

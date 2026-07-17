@@ -28,7 +28,13 @@
     mistakeReviewScreen:{section:"errors",route:"errors",label:"Carnet des erreurs",icon:"↻",focus:true},
     worldMapScreen:{section:"map",route:"map",label:"Carte",icon:"🗺️"},
     parentScreen:{section:"parents",route:"profile",label:"Parents",icon:"↗"},
-    guardianScreenV13:{section:"rewards",route:"rewards",label:"Gardien des Étoiles",icon:"👑"}
+    guardianScreenV13:{section:"rewards",route:"rewards",label:"Gardien des Étoiles",icon:"👑"},
+    msLanguageScreenV15:{section:"reading",route:"reading",label:"Langage — Moyenne Section",icon:"Aa"},
+    msMathScreenV15:{section:"math",route:"math",label:"Nombres — Moyenne Section",icon:"＋"},
+    msLogicScreenV15:{section:"reading",route:"reading",label:"Logique — Moyenne Section",icon:"🧩"},
+    msActivityScreenV15:{section:"reading",route:"reading",label:"Activité Moyenne Section",icon:"★",focus:true},
+    msProgressScreenV15:{section:"map",route:"map",label:"Parcours Moyenne Section",icon:"🗺️"},
+    msMistakesScreenV15:{section:"errors",route:"errors",label:"À revoir — Moyenne Section",icon:"↻",focus:true}
   };
 
   const routeActions = {
@@ -155,7 +161,8 @@
   }
 
   function screenRoute(screenId){
-    return screenMeta[screenId]?.route || "home";
+    const screen = document.getElementById(screenId);
+    return screen?.dataset?.gameRoute || screenMeta[screenId]?.route || "home";
   }
 
   function storeRoute(screenId,meta){
@@ -175,7 +182,13 @@
       const screen = visibleScreen();
       if (!screen) return;
       const nextId = screen.id || "homeScreen";
-      const meta = screenMeta[nextId] || {section:"home",route:"home",label:"LumiKids",icon:"✦"};
+      const baseMeta = screenMeta[nextId] || {section:"home",route:"home",label:"LumiKids",icon:"✦"};
+      const meta = {
+        ...baseMeta,
+        section:screen.dataset.gameSection || baseMeta.section,
+        route:screen.dataset.gameRoute || baseMeta.route,
+        label:screen.dataset.gameLabel || baseMeta.label
+      };
       const previousId = currentScreenId;
       currentScreenId = nextId;
       currentSection = meta.section;

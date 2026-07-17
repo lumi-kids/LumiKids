@@ -1,4 +1,4 @@
-/* =========================================================
+=/* =========================================================
    LUMIKIDS V14 — GAME UI CONTROLLER
    HUD, progression visuelle, notifications, résultats et carnet.
 ========================================================= */
@@ -535,10 +535,35 @@
     overlay?.classList.add("hidden");
     overlay?.setAttribute("aria-hidden","true");
     document.body.classList.remove("parent-code-open-v14");
+
+    let opened = false;
+    try {
+      if (typeof parentOriginalShowV14 === "function") {
+        parentOriginalShowV14(...args);
+        opened = true;
+      }
+    } catch (error) {
+      console.error("[LumiKids] Ouverture Parents interrompue :",error);
+    }
+
+    if (!opened) {
+      try {
+        window.hideAllScreens?.();
+        document.getElementById("parentScreen")?.classList.remove("hidden");
+        window.updateGameUi?.();
+      } catch (error) {
+        console.error("[LumiKids] Ouverture Parents de secours impossible :",error);
+      }
+    }
+
     window.showToast?.("Espace Parents déverrouillé pour cette session.");
-    parentOriginalShowV14?.(...args);
+    try {
+      window.dispatchEvent(new CustomEvent("lumikids:parent-opened-v17"));
+    } catch {}
+
     setTimeout(() => {
       ensureParentCodeChangeButtonV14();
+      window.LumiEarlyYearsV17?.renderParent?.();
       window.GameNavigationV14?.sync?.();
     },30);
   }

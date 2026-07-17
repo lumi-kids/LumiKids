@@ -1,15 +1,23 @@
-const CACHE_NAME = "lumikids-game-ui-v14-1";
+const CACHE_NAME = "lumikids-parent-hud-v17-1";
 
 const APP_FILES = [
   "./",
   "./index.html",
   "./style.css",
   "./style-maths.css",
+  "./style-ms.css",
+  "./style-ps.css",
+  "./style-early-years-v17.css",
+  "./style-game-ui.css",
+  "./style-game-responsive.css",
   "./positions.css",
   "./script.js",
   "./script-maths.js",
   "./script-navigation.js",
   "./script-game-ui.js",
+  "./script-ms.js",
+  "./script-ps.js",
+  "./script-early-years-v17.js",
   "./manifest.json",
   "./icon.png"
 ];
