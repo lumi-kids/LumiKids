@@ -1,4 +1,4 @@
-const CACHE_NAME = "lumikids-game-ui-v14";
+const CACHE_NAME = "lumikids-game-ui-v14-1";
 
 const APP_FILES = [
   "./",
@@ -6,8 +6,6 @@ const APP_FILES = [
   "./style.css",
   "./style-maths.css",
   "./positions.css",
-  "./style-game-ui.css",
-  "./style-game-responsive.css",
   "./script.js",
   "./script-maths.js",
   "./script-navigation.js",

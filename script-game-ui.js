@@ -13,9 +13,11 @@
   let uiRefreshTimer = 0;
   let parentUnlockedV14 = false;
   let parentPendingArgsV14 = [];
-  let parentHoldFrameV14 = 0;
-  let parentHoldStartedV14 = 0;
   let parentOriginalShowV14 = null;
+  let parentPinDigitsV14 = "";
+  let parentPinModeV14 = "enter";
+  let parentPinFirstV14 = "";
+  const PARENT_PIN_KEY_V14 = "lumikids-parent-pin-v14";
 
   function state(){
     try { return typeof gameState !== "undefined" ? gameState : {}; }
@@ -395,71 +397,229 @@
   }
 
 
+  function storedParentPinV14(){
+    const fromState = String(state().parentPinV14 || "");
+    if (/^\d{4}$/.test(fromState)) return fromState;
+    try {
+      const local = String(localStorage.getItem(PARENT_PIN_KEY_V14) || "");
+      return /^\d{4}$/.test(local) ? local : "";
+    } catch { return ""; }
+  }
+
+  function saveParentPinV14(pin){
+    if (!/^\d{4}$/.test(pin)) return false;
+    state().parentPinV14 = pin;
+    try { localStorage.setItem(PARENT_PIN_KEY_V14,pin); } catch {}
+    try { window.saveGameState?.(); } catch {}
+    return true;
+  }
+
+  function adminAccessV14(){
+    try { return localStorage.getItem("lumikids-temp-admin-access") === "granted"; }
+    catch { return false; }
+  }
+
   function ensureParentGateV14(){
     if (document.getElementById("parentGateOverlayV14")) return;
     document.body.insertAdjacentHTML("beforeend",`
-      <div id="parentGateOverlayV14" class="parent-gate-overlay-v14 hidden" role="dialog" aria-modal="true" aria-labelledby="parentGateTitleV14">
+      <div id="parentGateOverlayV14" class="parent-gate-overlay-v14 hidden" role="dialog" aria-modal="true" aria-labelledby="parentGateTitleV14" aria-hidden="true">
         <section class="parent-gate-card-v14">
           <div class="parent-gate-icon-v14">🔒</div>
           <small>Espace réservé aux adultes</small>
-          <h2 id="parentGateTitleV14">Accès Parents</h2>
-          <p>Maintiens le bouton pendant deux secondes pour ouvrir le tableau de bord.</p>
-          <button id="parentHoldButtonV14" class="parent-hold-v14" type="button">
-            <i id="parentHoldProgressV14"></i><span>Maintenir pour ouvrir</span>
-          </button>
+          <h2 id="parentGateTitleV14">Code Parents</h2>
+          <p id="parentGateHelpV14">Entre ton code à 4 chiffres.</p>
+          <div id="parentPinDotsV14" class="parent-pin-dots-v14" aria-label="Code saisi">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div id="parentPinMessageV14" class="parent-pin-message-v14" role="status"></div>
+          <div class="parent-pin-keypad-v14">
+            <button type="button" onclick="parentPinDigitV14('1')">1</button>
+            <button type="button" onclick="parentPinDigitV14('2')">2</button>
+            <button type="button" onclick="parentPinDigitV14('3')">3</button>
+            <button type="button" onclick="parentPinDigitV14('4')">4</button>
+            <button type="button" onclick="parentPinDigitV14('5')">5</button>
+            <button type="button" onclick="parentPinDigitV14('6')">6</button>
+            <button type="button" onclick="parentPinDigitV14('7')">7</button>
+            <button type="button" onclick="parentPinDigitV14('8')">8</button>
+            <button type="button" onclick="parentPinDigitV14('9')">9</button>
+            <button type="button" class="parent-pin-clear-v14" onclick="parentPinClearV14()">Effacer</button>
+            <button type="button" onclick="parentPinDigitV14('0')">0</button>
+            <button id="parentPinValidateV14" type="button" class="parent-pin-validate-v14" onclick="parentPinValidateV14()">Valider</button>
+          </div>
+          <button id="parentPinForgotV14" class="parent-pin-forgot-v14" type="button" onclick="resetParentPinV14()" hidden>Réinitialiser le code avec l’accès administrateur</button>
           <button class="parent-gate-cancel-v14" type="button" onclick="closeParentGateV14()">Retour au jeu</button>
         </section>
       </div>`);
-    const hold = document.getElementById("parentHoldButtonV14");
-    hold?.addEventListener("pointerdown",startParentHoldV14);
-    ["pointerup","pointercancel","pointerleave","lostpointercapture"].forEach(name=>hold?.addEventListener(name,cancelParentHoldV14));
+  }
+
+  function updateParentPinUiV14(message="",isError=false){
+    ensureParentGateV14();
+    const hasPin = Boolean(storedParentPinV14());
+    const title = document.getElementById("parentGateTitleV14");
+    const help = document.getElementById("parentGateHelpV14");
+    const validate = document.getElementById("parentPinValidateV14");
+    const messageBox = document.getElementById("parentPinMessageV14");
+    const forgot = document.getElementById("parentPinForgotV14");
+
+    if (parentPinModeV14 === "setup") {
+      if (title) title.textContent = "Créer le code Parents";
+      if (help) help.textContent = "Choisis 4 chiffres que l’enfant ne connaît pas.";
+      if (validate) validate.textContent = "Continuer";
+    } else if (parentPinModeV14 === "confirm") {
+      if (title) title.textContent = "Confirmer le code";
+      if (help) help.textContent = "Entre une deuxième fois les mêmes 4 chiffres.";
+      if (validate) validate.textContent = "Créer le code";
+    } else if (parentPinModeV14 === "change") {
+      if (title) title.textContent = "Nouveau code Parents";
+      if (help) help.textContent = "Choisis ton nouveau code à 4 chiffres.";
+      if (validate) validate.textContent = "Continuer";
+    } else if (parentPinModeV14 === "change-confirm") {
+      if (title) title.textContent = "Confirmer le nouveau code";
+      if (help) help.textContent = "Répète le nouveau code.";
+      if (validate) validate.textContent = "Enregistrer";
+    } else {
+      if (title) title.textContent = "Code Parents";
+      if (help) help.textContent = "Entre le code à 4 chiffres pour ouvrir l’espace adulte.";
+      if (validate) validate.textContent = "Ouvrir";
+    }
+
+    document.querySelectorAll("#parentPinDotsV14 span").forEach((dot,index) => {
+      dot.classList.toggle("filled",index < parentPinDigitsV14.length);
+    });
+    if (messageBox) {
+      messageBox.textContent = message;
+      messageBox.style.color = isError ? "#d45e60" : "#4e69b8";
+    }
+    if (forgot) forgot.hidden = !(hasPin && adminAccessV14());
   }
 
   function openParentGateV14(args=[]){
     ensureParentGateV14();
     parentPendingArgsV14 = args;
-    document.getElementById("parentGateOverlayV14")?.classList.remove("hidden");
-    const progress = document.getElementById("parentHoldProgressV14");
-    if (progress) progress.style.width = "0%";
+    parentPinDigitsV14 = "";
+    parentPinFirstV14 = "";
+    parentPinModeV14 = storedParentPinV14() ? "enter" : "setup";
+    const overlay = document.getElementById("parentGateOverlayV14");
+    overlay?.classList.remove("hidden");
+    overlay?.setAttribute("aria-hidden","false");
+    document.body.classList.add("parent-code-open-v14");
+    updateParentPinUiV14();
   }
 
   window.closeParentGateV14 = function(){
-    cancelParentHoldV14();
-    document.getElementById("parentGateOverlayV14")?.classList.add("hidden");
+    parentPinDigitsV14 = "";
+    parentPinFirstV14 = "";
+    const overlay = document.getElementById("parentGateOverlayV14");
+    overlay?.classList.add("hidden");
+    overlay?.setAttribute("aria-hidden","true");
+    document.body.classList.remove("parent-code-open-v14");
     window.GameNavigationV14?.sync?.();
   };
 
-  function startParentHoldV14(event){
-    event.preventDefault();
-    try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
-    cancelAnimationFrame(parentHoldFrameV14);
-    parentHoldStartedV14 = performance.now();
-    const step = now => {
-      const elapsed = now-parentHoldStartedV14;
-      const percent = clamp(elapsed/1800*100);
-      const progress = document.getElementById("parentHoldProgressV14");
-      if (progress) progress.style.width = `${percent}%`;
-      if (percent >= 100) {
-        parentUnlockedV14 = true;
-        document.getElementById("parentGateOverlayV14")?.classList.add("hidden");
-        const args = parentPendingArgsV14;
-        parentPendingArgsV14 = [];
-        window.showToast?.("Espace Parents déverrouillé pour cette session.");
-        parentOriginalShowV14?.(...args);
-        setTimeout(()=>window.GameNavigationV14?.sync?.(),20);
-        return;
-      }
-      parentHoldFrameV14 = requestAnimationFrame(step);
-    };
-    parentHoldFrameV14 = requestAnimationFrame(step);
+  window.parentPinDigitV14 = function(digit){
+    if (!/^\d$/.test(String(digit)) || parentPinDigitsV14.length >= 4) return;
+    parentPinDigitsV14 += String(digit);
+    updateParentPinUiV14();
+  };
+
+  window.parentPinClearV14 = function(){
+    parentPinDigitsV14 = parentPinDigitsV14.slice(0,-1);
+    updateParentPinUiV14();
+  };
+
+  function openParentsAfterPinV14(){
+    parentUnlockedV14 = true;
+    const args = parentPendingArgsV14;
+    parentPendingArgsV14 = [];
+    const overlay = document.getElementById("parentGateOverlayV14");
+    overlay?.classList.add("hidden");
+    overlay?.setAttribute("aria-hidden","true");
+    document.body.classList.remove("parent-code-open-v14");
+    window.showToast?.("Espace Parents déverrouillé pour cette session.");
+    parentOriginalShowV14?.(...args);
+    setTimeout(() => {
+      ensureParentCodeChangeButtonV14();
+      window.GameNavigationV14?.sync?.();
+    },30);
   }
 
-  function cancelParentHoldV14(){
-    cancelAnimationFrame(parentHoldFrameV14);
-    parentHoldFrameV14 = 0;
-    parentHoldStartedV14 = 0;
-    const progress = document.getElementById("parentHoldProgressV14");
-    if (progress) progress.style.width = "0%";
+  window.parentPinValidateV14 = function(){
+    if (parentPinDigitsV14.length !== 4) {
+      updateParentPinUiV14("Le code doit contenir exactement 4 chiffres.",true);
+      return;
+    }
+
+    if (parentPinModeV14 === "setup" || parentPinModeV14 === "change") {
+      parentPinFirstV14 = parentPinDigitsV14;
+      parentPinDigitsV14 = "";
+      parentPinModeV14 = parentPinModeV14 === "change" ? "change-confirm" : "confirm";
+      updateParentPinUiV14();
+      return;
+    }
+
+    if (parentPinModeV14 === "confirm" || parentPinModeV14 === "change-confirm") {
+      if (parentPinDigitsV14 !== parentPinFirstV14) {
+        parentPinDigitsV14 = "";
+        parentPinFirstV14 = "";
+        parentPinModeV14 = parentPinModeV14 === "change-confirm" ? "change" : "setup";
+        updateParentPinUiV14("Les deux codes ne correspondent pas. Recommence.",true);
+        return;
+      }
+      saveParentPinV14(parentPinDigitsV14);
+      if (parentPinModeV14 === "change-confirm") {
+        window.closeParentGateV14();
+        window.showToast?.("Le code Parents a été modifié.");
+        return;
+      }
+      openParentsAfterPinV14();
+      return;
+    }
+
+    if (parentPinDigitsV14 === storedParentPinV14()) {
+      openParentsAfterPinV14();
+    } else {
+      parentPinDigitsV14 = "";
+      updateParentPinUiV14("Code incorrect. Réessaie.",true);
+    }
+  };
+
+  window.resetParentPinV14 = function(){
+    if (!adminAccessV14()) {
+      updateParentPinUiV14("L’accès administrateur est nécessaire pour réinitialiser le code.",true);
+      return;
+    }
+    delete state().parentPinV14;
+    try { localStorage.removeItem(PARENT_PIN_KEY_V14); } catch {}
+    try { window.saveGameState?.(); } catch {}
+    parentPinDigitsV14 = "";
+    parentPinFirstV14 = "";
+    parentPinModeV14 = "setup";
+    updateParentPinUiV14("Ancien code supprimé. Crée un nouveau code.");
+  };
+
+  window.changeParentPinV14 = function(){
+    if (!parentUnlockedV14) return openParentGateV14([]);
+    ensureParentGateV14();
+    parentPinDigitsV14 = "";
+    parentPinFirstV14 = "";
+    parentPinModeV14 = "change";
+    const overlay = document.getElementById("parentGateOverlayV14");
+    overlay?.classList.remove("hidden");
+    overlay?.setAttribute("aria-hidden","false");
+    document.body.classList.add("parent-code-open-v14");
+    updateParentPinUiV14();
+  };
+
+  function ensureParentCodeChangeButtonV14(){
+    const actions = document.getElementById("parentActionsV13");
+    if (!actions || document.getElementById("changeParentPinButtonV14")) return;
+    const button = document.createElement("button");
+    button.id = "changeParentPinButtonV14";
+    button.className = "parent-pin-change-v14";
+    button.type = "button";
+    button.textContent = "🔐 Changer le code Parents";
+    button.onclick = window.changeParentPinV14;
+    actions.appendChild(button);
   }
 
   function installParentGateV14(){
@@ -468,7 +628,11 @@
     if (typeof original !== "function" || original.__parentGateV14Wrapped) return;
     parentOriginalShowV14 = original;
     function guarded(...args){
-      if (parentUnlockedV14) return original.apply(this,args);
+      if (parentUnlockedV14) {
+        const result = original.apply(this,args);
+        setTimeout(ensureParentCodeChangeButtonV14,20);
+        return result;
+      }
       openParentGateV14(args);
     }
     guarded.__parentGateV14Wrapped = true;

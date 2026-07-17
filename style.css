@@ -6405,3 +6405,1701 @@ body.v10-reduced-motion .v13-glow{
   .guardian-home-banner-v13{grid-template-columns:auto 1fr}
   .guardian-home-banner-v13 button{grid-column:1/-1}
 }
+
+
+/* =========================================================
+   LUMIKIDS V14 — GAME UI
+   Refonte visuelle complète, sans modifier les royaumes.
+========================================================= */
+
+:root{
+  --game-bg:#111a31;
+  --game-bg-2:#1f2d50;
+  --game-panel:rgba(255,255,255,.94);
+  --game-panel-soft:rgba(255,255,255,.78);
+  --game-ink:#19233a;
+  --game-muted:#6f7890;
+  --game-green:#55d18a;
+  --game-green-dark:#24995c;
+  --game-blue:#6c86ec;
+  --game-purple:#9d74e8;
+  --game-gold:#f5c94f;
+  --game-orange:#ff9f59;
+  --game-red:#ef746d;
+  --game-radius-xl:34px;
+  --game-radius-lg:26px;
+  --game-radius-md:18px;
+  --game-shadow:0 24px 70px rgba(10,19,39,.22);
+  --game-shadow-soft:0 15px 42px rgba(14,27,49,.13);
+  --game-hud-height:86px;
+  --game-nav-width:92px;
+  --game-content-width:1500px;
+}
+
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--game-bg)}
+body.game-ui-v14{
+  min-height:100vh;
+  min-height:100dvh;
+  margin:0;
+  overflow-x:hidden;
+  color:var(--game-ink);
+  background:
+    radial-gradient(circle at 13% 12%,rgba(91,211,144,.19),transparent 28%),
+    radial-gradient(circle at 88% 9%,rgba(132,116,234,.24),transparent 31%),
+    radial-gradient(circle at 54% 105%,rgba(86,134,232,.23),transparent 36%),
+    linear-gradient(145deg,#10182d 0%,#1b2949 54%,#222f55 100%);
+}
+body.game-ui-v14::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-4;
+  pointer-events:none;
+  opacity:.42;
+  background-image:
+    radial-gradient(circle,rgba(255,255,255,.9) 0 1px,transparent 1.8px),
+    radial-gradient(circle,rgba(255,224,112,.7) 0 1px,transparent 2px);
+  background-size:72px 72px,117px 117px;
+  background-position:0 0,31px 19px;
+}
+body.game-ui-v14::after{
+  content:"";
+  position:fixed;
+  left:var(--game-nav-width);
+  right:0;
+  bottom:0;
+  height:38vh;
+  z-index:-3;
+  pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(8,15,31,.3));
+}
+
+.sky-decoration{display:none!important}
+.v13-magic-layer{z-index:-1!important;opacity:.55}
+
+.game-backdrop-v14{
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  overflow:hidden;
+  pointer-events:none;
+}
+.game-backdrop-v14::before,
+.game-backdrop-v14::after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  filter:blur(3px);
+  opacity:.46;
+  animation:gameOrbFloatV14 11s ease-in-out infinite;
+}
+.game-backdrop-v14::before{
+  width:380px;height:380px;left:4%;top:18%;
+  background:radial-gradient(circle,rgba(72,213,134,.25),transparent 68%);
+}
+.game-backdrop-v14::after{
+  width:520px;height:520px;right:-9%;bottom:-12%;
+  background:radial-gradient(circle,rgba(127,110,231,.28),transparent 69%);
+  animation-delay:-4s;
+}
+@keyframes gameOrbFloatV14{50%{transform:translate3d(25px,-18px,0) scale(1.06)}}
+
+/* =========================================================
+   COQUE PLEIN ÉCRAN
+========================================================= */
+body.game-ui-v14 .app{
+  width:100%;
+  min-height:100vh;
+  min-height:100dvh;
+  padding:0 0 0 var(--game-nav-width);
+  display:block;
+}
+body.game-ui-v14 .game-shell{
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  min-height:100dvh;
+  margin:0;
+  padding:var(--game-hud-height) 0 0;
+  overflow:visible;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+body.game-ui-v14 .screen{
+  width:min(var(--game-content-width),calc(100% - 64px));
+  min-height:calc(100vh - var(--game-hud-height));
+  min-height:calc(100dvh - var(--game-hud-height));
+  margin:0 auto;
+  padding:34px 0 70px;
+  animation:none;
+}
+body.game-ui-v14 .screen.hidden{display:none!important}
+body.game-ui-v14 .screen:not(.hidden){animation:gameScreenInV14 .42s cubic-bezier(.2,.8,.2,1)}
+@keyframes gameScreenInV14{
+  from{opacity:0;transform:translateY(15px) scale(.992)}
+  to{opacity:1;transform:none}
+}
+
+/* =========================================================
+   HUD PERMANENT
+========================================================= */
+body.game-ui-v14 .game-header{
+  position:fixed;
+  z-index:1200;
+  top:12px;
+  left:calc(var(--game-nav-width) + 18px);
+  right:18px;
+  height:calc(var(--game-hud-height) - 20px);
+  margin:0;
+  padding:9px 14px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:23px;
+  display:grid;
+  grid-template-columns:auto minmax(220px,1fr) auto;
+  align-items:center;
+  gap:14px;
+  background:linear-gradient(135deg,rgba(21,31,58,.94),rgba(41,54,91,.9));
+  color:#fff;
+  box-shadow:0 18px 48px rgba(4,10,24,.28);
+  backdrop-filter:blur(22px) saturate(1.2);
+}
+body.game-ui-v14 .brand-button{
+  min-width:178px;
+  padding:4px 10px 4px 4px;
+  border-radius:18px;
+  color:#fff;
+  transition:.2s;
+}
+body.game-ui-v14 .brand-button:hover{background:rgba(255,255,255,.08)}
+body.game-ui-v14 .brand-button .mascot{
+  width:48px;height:48px;min-width:48px;
+  border-radius:16px;
+  padding:2px;
+  overflow:hidden;
+  background:linear-gradient(145deg,#fff,#dfffee);
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+body.game-ui-v14 .brand-button .mascot img{width:100%;height:100%;object-fit:contain}
+body.game-ui-v14 .brand-button .badge{
+  margin:0 0 1px;
+  color:#a9f0c5;
+  font-size:8px;
+  letter-spacing:.12em;
+}
+body.game-ui-v14 .brand-button h1{
+  margin:0;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  font-size:22px;
+  letter-spacing:-.04em;
+}
+
+.game-hud-player-v14{
+  min-width:0;
+  display:grid;
+  grid-template-columns:auto minmax(130px,1fr) auto auto;
+  align-items:center;
+  gap:11px;
+}
+.game-hud-back-v14{
+  width:42px;height:42px;
+  border:0;border-radius:14px;
+  display:grid;place-items:center;
+  color:#fff;background:rgba(255,255,255,.09);
+  font-size:20px;cursor:pointer;
+  transition:.18s;
+}
+.game-hud-back-v14:hover{background:rgba(255,255,255,.17);transform:translateX(-2px)}
+.game-hud-back-v14[hidden]{display:none!important}
+.game-hud-identity-v14{min-width:0}
+.game-hud-identity-v14>div{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:6px;
+}
+.game-hud-identity-v14 strong{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#fff;font-size:13px;
+}
+.game-hud-identity-v14 small{color:#b9c3df;font-size:9px;font-weight:850;text-transform:uppercase}
+.game-hud-xp-v14{
+  height:8px;border-radius:99px;overflow:hidden;
+  background:rgba(255,255,255,.12);
+}
+.game-hud-xp-v14 span{
+  display:block;height:100%;width:0;border-radius:inherit;
+  background:linear-gradient(90deg,#58d58c,#ffe071);
+  box-shadow:0 0 15px rgba(91,217,143,.45);
+  transition:width .35s ease;
+}
+.game-hud-level-v14,
+.game-hud-streak-v14{
+  min-width:62px;
+  padding:8px 10px;
+  border-radius:14px;
+  text-align:center;
+  background:rgba(255,255,255,.08);
+}
+.game-hud-level-v14 small,.game-hud-streak-v14 small{
+  display:block;color:#b9c3df;font-size:7px;font-weight:900;text-transform:uppercase;
+}
+.game-hud-level-v14 b{font-size:18px;color:#aef0c7}
+.game-hud-streak-v14 b{font-size:15px;color:#ffd378}
+
+body.game-ui-v14 .top-resources{gap:7px;flex-wrap:nowrap}
+body.game-ui-v14 .top-resources>span{
+  min-width:72px;
+  padding:9px 11px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  color:#fff;
+  background:rgba(255,255,255,.08);
+  box-shadow:none;
+}
+body.game-ui-v14 .top-resources>span:first-of-type{color:#ffe27b}
+body.game-ui-v14 .top-resources>span:nth-of-type(2){color:#ffd08d}
+body.game-ui-v14 .top-icon-action,
+body.game-ui-v14 .storybook-top-button{
+  width:42px;height:42px;min-width:42px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  color:#fff;background:rgba(255,255,255,.08);
+  box-shadow:none;
+}
+body.game-ui-v14 .top-icon-action:hover,
+body.game-ui-v14 .storybook-top-button:hover{background:rgba(255,255,255,.16);transform:translateY(-2px)}
+body.game-ui-v14 .storybook-top-button img{filter:drop-shadow(0 3px 4px rgba(0,0,0,.2))}
+body.game-ui-v14.ui-focus-mode .game-header{grid-template-columns:auto 1fr auto}
+body.game-ui-v14.ui-focus-mode .brand-button{min-width:auto}
+body.game-ui-v14.ui-focus-mode .brand-button>div:last-child{display:none}
+body.game-ui-v14.ui-focus-mode .game-hud-level-v14,
+body.game-ui-v14.ui-focus-mode .game-hud-streak-v14{display:none}
+
+/* =========================================================
+   NAVIGATION DE JEU
+========================================================= */
+.game-side-nav-v14{
+  position:fixed;
+  z-index:1250;
+  left:10px;top:12px;bottom:12px;
+  width:72px;
+  padding:10px 7px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:25px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  background:linear-gradient(180deg,rgba(20,29,54,.96),rgba(30,43,75,.94));
+  box-shadow:0 20px 55px rgba(3,8,20,.34);
+  backdrop-filter:blur(22px);
+}
+.game-side-nav-v14 .game-nav-mark-v14{
+  width:48px;height:48px;margin-bottom:6px;
+  border-radius:17px;display:grid;place-items:center;
+  color:#15213d;background:linear-gradient(145deg,#88e8ad,#fff0a4);
+  font-size:24px;font-weight:950;
+  box-shadow:0 10px 26px rgba(67,210,124,.22);
+}
+.game-side-nav-v14 button,
+.game-bottom-nav-v14 button{
+  border:0;cursor:pointer;font-family:inherit;
+}
+.game-side-nav-v14 button{
+  position:relative;
+  width:56px;height:55px;
+  border-radius:18px;
+  display:grid;place-items:center;
+  color:#b8c1db;background:transparent;
+  transition:.18s;
+}
+.game-side-nav-v14 button:hover{color:#fff;background:rgba(255,255,255,.08);transform:translateY(-2px)}
+.game-side-nav-v14 button.active{
+  color:#17223e;background:linear-gradient(145deg,#82e4a9,#fce58a);
+  box-shadow:0 10px 23px rgba(91,218,143,.22);
+}
+.game-side-nav-v14 button span{font-size:22px;line-height:1}
+.game-side-nav-v14 button small{
+  position:absolute;left:68px;top:50%;
+  transform:translateY(-50%) translateX(-6px);
+  min-width:max-content;padding:8px 10px;
+  border-radius:10px;
+  color:#fff;background:#192440;
+  opacity:0;pointer-events:none;
+  font-size:10px;font-weight:900;
+  box-shadow:0 8px 20px rgba(0,0,0,.22);
+  transition:.18s;
+}
+.game-side-nav-v14 button:hover small{opacity:1;transform:translateY(-50%) translateX(0)}
+.game-side-nav-v14 .game-nav-spacer-v14{flex:1}
+.game-side-nav-v14 .game-nav-profile-v14{color:#ffd779}
+.game-bottom-nav-v14{display:none}
+
+/* =========================================================
+   TITRES, PANNEAUX ET BOUTONS GÉNÉRAUX
+========================================================= */
+body.game-ui-v14 .page-heading{
+  min-height:76px;
+  margin:0 0 24px;
+  padding:11px 15px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:23px;
+  color:#fff;
+  background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.055));
+  backdrop-filter:blur(15px);
+  box-shadow:0 12px 35px rgba(4,10,25,.13);
+}
+body.game-ui-v14 .page-heading h2{color:#fff;font-size:clamp(24px,3vw,34px)}
+body.game-ui-v14 .page-heading .eyebrow{color:#a8efc3}
+body.game-ui-v14 .back-btn{
+  min-height:45px;padding:10px 14px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:15px;
+  color:#fff;background:rgba(255,255,255,.09);
+  font-weight:900;
+}
+body.game-ui-v14 .back-btn:hover{background:rgba(255,255,255,.17)}
+body.game-ui-v14 .mastery-pill{
+  color:#6f4c0a;background:linear-gradient(145deg,#fff3b7,#ffd970);
+  box-shadow:0 8px 20px rgba(245,201,79,.2);
+}
+body.game-ui-v14 button{touch-action:manipulation}
+body.game-ui-v14 .btn,
+body.game-ui-v14 .continue-button,
+body.game-ui-v14 .guided-next,
+body.game-ui-v14 .practice-actions-v9 button,
+body.game-ui-v14 .exercise-finish-actions button{
+  min-height:50px;
+  border-radius:17px;
+  font-weight:950;
+  letter-spacing:.01em;
+  box-shadow:0 10px 24px rgba(19,34,61,.13);
+}
+body.game-ui-v14 .btn.primary,
+body.game-ui-v14 .continue-button,
+body.game-ui-v14 .guided-next{
+  background:linear-gradient(135deg,#55d18a,#24995c);
+  color:#fff;
+}
+
+/* =========================================================
+   ACCUEIL — CAMP PRINCIPAL
+========================================================= */
+body.game-ui-v14[data-game-screen="homeScreen"]{
+  background:
+    radial-gradient(circle at 15% 8%,rgba(77,217,143,.25),transparent 30%),
+    radial-gradient(circle at 88% 18%,rgba(255,213,98,.16),transparent 25%),
+    linear-gradient(145deg,#10192e,#1d3150 55%,#243c5c);
+}
+body.game-ui-v14 #homeScreen{padding-top:26px}
+body.game-ui-v14 #homeScreen .hero-v3{
+  position:relative;
+  min-height:390px;
+  padding:54px 58px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:42px;
+  overflow:hidden;
+  color:#fff;
+  background:
+    linear-gradient(90deg,rgba(12,31,38,.83),rgba(18,47,54,.52) 58%,rgba(32,55,87,.26)),
+    radial-gradient(circle at 78% 42%,rgba(255,235,151,.32),transparent 24%),
+    linear-gradient(145deg,#315f5a,#437763 45%,#5974a0);
+  box-shadow:0 32px 90px rgba(3,11,24,.26);
+}
+body.game-ui-v14 #homeScreen .hero-v3::before{
+  content:"";
+  position:absolute;inset:0;
+  pointer-events:none;
+  opacity:.52;
+  background:
+    radial-gradient(circle at 12% 90%,rgba(88,215,141,.45),transparent 24%),
+    radial-gradient(circle at 90% 10%,rgba(255,229,126,.3),transparent 24%);
+}
+body.game-ui-v14 #homeScreen .hero-v3::after{
+  content:"✦  ✧  ✦";
+  position:absolute;right:7%;top:10%;
+  color:rgba(255,238,156,.75);
+  letter-spacing:18px;font-size:22px;
+  animation:homeStarsV14 3s ease-in-out infinite;
+}
+@keyframes homeStarsV14{50%{opacity:.42;transform:translateY(-6px)}}
+body.game-ui-v14 #homeScreen .hero-copy{position:relative;z-index:2;max-width:690px}
+body.game-ui-v14 #homeScreen .hero-copy .eyebrow{color:#a7f4c5;font-size:12px}
+body.game-ui-v14 #homeScreen .hero-copy h2{
+  max-width:720px;
+  color:#fff;
+  font-size:clamp(44px,6vw,78px);
+  line-height:.94;
+  letter-spacing:-.055em;
+  text-shadow:0 8px 28px rgba(0,0,0,.22);
+}
+body.game-ui-v14 #homeScreen .hero-copy>p:not(.eyebrow):not(.resume-hint-v10){
+  color:rgba(255,255,255,.76);font-size:18px;
+}
+body.game-ui-v14 #homeScreen .continue-button{
+  min-width:250px;
+  padding:17px 22px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:19px;
+  font-size:16px;
+  background:linear-gradient(135deg,#64dc95,#2aa965);
+  box-shadow:0 16px 35px rgba(21,138,79,.34);
+}
+body.game-ui-v14 #homeScreen .resume-hint-v10{color:#c4d6ce!important;font-size:12px!important}
+body.game-ui-v14 #homeScreen .hero-mascot{position:relative;z-index:2;min-height:290px}
+body.game-ui-v14 #homeScreen .hero-mascot::before{
+  content:"";
+  position:absolute;width:290px;height:290px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,245,190,.42),rgba(255,255,255,.08) 48%,transparent 70%);
+  filter:blur(2px);
+}
+body.game-ui-v14 #homeScreen .hero-mascot img{
+  position:relative;z-index:2;
+  width:min(310px,27vw);height:min(310px,27vw);
+  filter:drop-shadow(0 24px 20px rgba(4,14,28,.3));
+}
+body.game-ui-v14 #homeScreen .hero-mascot span{
+  right:2%;top:1%;z-index:3;
+  padding:13px 17px;
+  color:#22523a;
+  border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 15px 38px rgba(3,13,26,.19);
+}
+body.game-ui-v14 #homeScreen .level-panel{
+  position:relative;z-index:5;
+  width:calc(100% - 70px);
+  margin:-30px auto 0;
+  padding:18px 22px;
+  border:1px solid rgba(255,255,255,.5);
+  border-radius:25px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 20px 55px rgba(4,14,31,.19);
+  backdrop-filter:blur(18px);
+}
+body.game-ui-v14 #homeScreen .home-title{margin:36px 4px 17px;color:#fff}
+body.game-ui-v14 #homeScreen .home-title .eyebrow{color:#a8efc3}
+body.game-ui-v14 #homeScreen .home-title h2{color:#fff;font-size:34px}
+body.game-ui-v14 #homeScreen .activity-grid-v3{
+  grid-template-columns:repeat(12,1fr);
+  gap:17px;
+}
+body.game-ui-v14 #homeScreen .activity-v3{
+  position:relative;
+  min-height:190px;
+  padding:24px;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:30px;
+  overflow:hidden;
+  grid-template-columns:92px 1fr auto;
+  color:#fff;
+  background:linear-gradient(145deg,rgba(255,255,255,.15),rgba(255,255,255,.075));
+  box-shadow:0 20px 48px rgba(3,11,27,.2);
+  backdrop-filter:blur(15px);
+}
+body.game-ui-v14 #homeScreen .activity-v3::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;
+  background:radial-gradient(circle at 12% 15%,rgba(255,255,255,.22),transparent 27%);
+}
+body.game-ui-v14 #homeScreen .activity-v3:hover{
+  transform:translateY(-7px) scale(1.01);
+  border-color:rgba(255,255,255,.4);
+  box-shadow:0 28px 65px rgba(2,9,24,.3);
+}
+body.game-ui-v14 #homeScreen .reading-v3,
+body.game-ui-v14 #homeScreen .maths-v3{grid-column:span 6;min-height:230px}
+body.game-ui-v14 #homeScreen .rewards-v3,
+body.game-ui-v14 #homeScreen .mistakes-v3,
+body.game-ui-v14 #homeScreen .world-map-v3,
+body.game-ui-v14 #homeScreen .parents-v3{grid-column:span 3;grid-template-columns:1fr;align-content:center;text-align:center}
+body.game-ui-v14 #homeScreen .reading-v3{background:linear-gradient(145deg,rgba(54,177,111,.82),rgba(27,104,80,.68))}
+body.game-ui-v14 #homeScreen .maths-v3{background:linear-gradient(145deg,rgba(82,111,214,.86),rgba(72,69,151,.72))}
+body.game-ui-v14 #homeScreen .rewards-v3{background:linear-gradient(145deg,rgba(210,157,45,.78),rgba(130,83,36,.72))}
+body.game-ui-v14 #homeScreen .mistakes-v3{background:linear-gradient(145deg,rgba(219,102,87,.8),rgba(128,60,75,.72))}
+body.game-ui-v14 #homeScreen .world-map-v3{background:linear-gradient(145deg,rgba(56,143,174,.8),rgba(52,83,137,.72))}
+body.game-ui-v14 #homeScreen .parents-v3{background:linear-gradient(145deg,rgba(139,98,198,.8),rgba(84,63,136,.72))}
+body.game-ui-v14 #homeScreen .activity-image,
+body.game-ui-v14 #homeScreen .activity-symbol{
+  position:relative;z-index:2;
+  width:92px;height:92px;
+  border:1px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.88);
+  box-shadow:0 13px 30px rgba(5,17,33,.18);
+}
+body.game-ui-v14 #homeScreen .rewards-v3 .activity-symbol,
+body.game-ui-v14 #homeScreen .mistakes-v3 .activity-symbol,
+body.game-ui-v14 #homeScreen .world-map-v3 .activity-symbol,
+body.game-ui-v14 #homeScreen .parents-v3 .activity-symbol{margin:0 auto;width:72px;height:72px}
+body.game-ui-v14 #homeScreen .activity-v3>span:nth-child(2){position:relative;z-index:2}
+body.game-ui-v14 #homeScreen .activity-v3 small,
+body.game-ui-v14 #homeScreen .activity-v3 em{color:rgba(255,255,255,.7)}
+body.game-ui-v14 #homeScreen .activity-v3 strong{color:#fff;font-size:29px}
+body.game-ui-v14 #homeScreen .activity-v3>b{position:relative;z-index:2}
+.game-card-progress-v14{
+  display:block!important;
+  height:7px;margin-top:13px;
+  border-radius:99px;overflow:hidden;
+  background:rgba(255,255,255,.18);
+}
+.game-card-progress-v14 i{
+  display:block;height:100%;border-radius:inherit;
+  background:linear-gradient(90deg,#fff4a3,#fff);
+}
+.game-card-progress-v14+small{
+  display:block!important;margin-top:6px!important;
+  color:rgba(255,255,255,.75)!important;
+  font-size:9px!important;
+}
+body.game-ui-v14 #homeScreen .daily-challenge,
+body.game-ui-v14 #homeScreen .daily-chest-v13,
+body.game-ui-v14 #homeScreen .admin-tools-panel,
+body.game-ui-v14 #homeScreen .beta-tools{
+  border:1px solid rgba(255,255,255,.16);
+  color:#fff;
+  background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.07));
+  box-shadow:0 18px 45px rgba(3,11,26,.2);
+  backdrop-filter:blur(15px);
+}
+body.game-ui-v14 #homeScreen .daily-challenge{margin-top:20px}
+body.game-ui-v14 #homeScreen .daily-challenge small,
+body.game-ui-v14 #homeScreen .daily-challenge span,
+body.game-ui-v14 #homeScreen .daily-chest-v13 p,
+body.game-ui-v14 #homeScreen .admin-tools-panel p,
+body.game-ui-v14 #homeScreen .beta-tools p{color:rgba(255,255,255,.65)}
+body.game-ui-v14 #homeScreen .daily-chest-v13 strong,
+body.game-ui-v14 #homeScreen .daily-chest-v13 b{color:#fff}
+
+/* =========================================================
+   LECTURE — BIBLIOTHÈQUE MAGIQUE
+========================================================= */
+body.game-ui-v14[data-game-section="reading"]{
+  background:
+    radial-gradient(circle at 11% 16%,rgba(86,214,139,.25),transparent 29%),
+    radial-gradient(circle at 89% 15%,rgba(252,216,105,.17),transparent 25%),
+    linear-gradient(145deg,#102032,#1c3d45 58%,#263c58);
+}
+body.game-ui-v14 #readingHome{
+  position:relative;
+  min-height:calc(100dvh - var(--game-hud-height));
+}
+body.game-ui-v14 #readingHome::before{
+  content:"";
+  position:absolute;inset:125px 0 40px;
+  z-index:-1;border-radius:45px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035)),
+    repeating-linear-gradient(90deg,transparent 0 31%,rgba(255,255,255,.04) 31.2% 31.5%);
+  border:1px solid rgba(255,255,255,.13);
+}
+body.game-ui-v14 #readingHome .reading-menu-v3{
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+  padding:30px;
+  border-radius:40px;
+  perspective:1200px;
+}
+body.game-ui-v14 #readingHome .reading-menu-v3 button{
+  position:relative;
+  min-height:420px;
+  padding:30px 25px;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:20px 34px 34px 20px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-end;
+  color:#fff;
+  box-shadow:18px 24px 55px rgba(2,10,24,.28),inset 8px 0 0 rgba(255,255,255,.12);
+  transform:rotateY(-3deg);
+  transition:.26s;
+}
+body.game-ui-v14 #readingHome .reading-menu-v3 button::before{
+  content:"";
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 25% 18%,rgba(255,255,255,.28),transparent 23%),
+    linear-gradient(180deg,rgba(0,0,0,.02),rgba(6,20,31,.6));
+}
+body.game-ui-v14 #readingHome .reading-menu-v3 button:nth-child(1){background:linear-gradient(145deg,#4fc47f,#196d51)}
+body.game-ui-v14 #readingHome .reading-menu-v3 button:nth-child(2){background:linear-gradient(145deg,#7187e2,#41458e)}
+body.game-ui-v14 #readingHome .reading-menu-v3 button:nth-child(3){background:linear-gradient(145deg,#aa79e3,#6850a8)}
+body.game-ui-v14 #readingHome .reading-menu-v3 button:hover{transform:translateY(-10px) rotateY(0) scale(1.015)}
+body.game-ui-v14 #readingHome .reading-icon{
+  position:absolute;top:38px;left:50%;
+  transform:translateX(-50%);
+  width:120px;height:120px;border-radius:37px;
+  color:#246645;background:rgba(255,255,255,.9);
+  box-shadow:0 18px 42px rgba(2,12,25,.22);
+  font-size:48px;
+}
+body.game-ui-v14 #readingHome .reading-icon.blue{color:#4f62bd}
+body.game-ui-v14 #readingHome .reading-icon.purple{color:#8050bc}
+body.game-ui-v14 #readingHome .reading-menu-v3 button>span:nth-child(2){position:relative;z-index:2;width:100%}
+body.game-ui-v14 #readingHome .reading-menu-v3 small,
+body.game-ui-v14 #readingHome .reading-menu-v3 em{color:rgba(255,255,255,.68)}
+body.game-ui-v14 #readingHome .reading-menu-v3 strong{color:#fff;font-size:30px}
+body.game-ui-v14 #readingHome .reading-menu-v3 button>b{position:absolute;z-index:2;right:24px;bottom:25px;font-size:27px}
+.reading-progress-v14{
+  width:100%;margin-top:17px;
+  display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+}
+.reading-progress-v14 i{height:8px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.18)}
+.reading-progress-v14 i span{display:block;height:100%;border-radius:inherit;background:#fff0a0}
+.reading-progress-v14 b{font-size:10px;color:#fff}
+
+/* =========================================================
+   COURS — SCÈNE DE JEU
+========================================================= */
+body.game-ui-v14 #lessonScreen{
+  display:grid;
+  grid-template-columns:minmax(260px,340px) minmax(0,1fr);
+  grid-template-rows:auto auto 1fr;
+  column-gap:24px;
+  align-items:start;
+}
+body.game-ui-v14 #lessonScreen.hidden{display:none!important}
+body.game-ui-v14 #lessonScreen>.page-heading{grid-column:1/-1}
+body.game-ui-v14 #lessonScreen>.lesson-title-box{
+  grid-column:1;
+  grid-row:2/4;
+  position:sticky;
+  top:calc(var(--game-hud-height) + 18px);
+  min-height:510px;
+  padding:28px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:32px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+  color:#fff;
+  background:
+    radial-gradient(circle at 50% 26%,rgba(255,242,154,.22),transparent 28%),
+    linear-gradient(155deg,rgba(74,183,119,.88),rgba(39,87,78,.9));
+  box-shadow:0 24px 65px rgba(3,13,28,.23);
+}
+body.game-ui-v14 #lessonScreen .lesson-title-box .lesson-icon.big{
+  width:180px;height:180px;margin:0 auto 24px;
+  border-radius:45px;padding:14px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 20px 45px rgba(3,16,28,.25);
+}
+body.game-ui-v14 #lessonScreen .lesson-title-box h2{color:#fff;font-size:31px}
+body.game-ui-v14 #lessonScreen .lesson-title-box p{color:rgba(255,255,255,.73);line-height:1.5}
+body.game-ui-v14 #lessonScreen>.lesson-tabs{
+  grid-column:2;grid-row:2;
+  margin:0 0 14px;padding:12px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:24px;
+  display:flex;gap:8px;overflow:auto;
+  background:rgba(255,255,255,.09);
+  backdrop-filter:blur(14px);
+}
+body.game-ui-v14 #lessonScreen>.lesson-tabs button{
+  min-width:max-content;flex:1;
+  min-height:49px;padding:11px 15px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:15px;
+  color:#cbd5e9;background:rgba(255,255,255,.07);
+}
+body.game-ui-v14 #lessonScreen>.lesson-tabs button.tab-active{
+  color:#163022;background:linear-gradient(145deg,#92edb4,#fff2a4);
+  box-shadow:0 10px 24px rgba(82,215,139,.2);
+}
+body.game-ui-v14 #lessonScreen>#lessonContent{
+  grid-column:2;grid-row:3;
+  min-width:0;
+}
+body.game-ui-v14 #lessonContent>.lesson-box,
+body.game-ui-v14 #lessonContent .lesson-box{
+  min-height:460px;
+  padding:34px;
+  border:1px solid rgba(255,255,255,.48);
+  border-radius:32px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 25px 70px rgba(3,14,31,.2);
+}
+body.game-ui-v14 #lessonContent .big-letter{font-size:clamp(92px,13vw,160px);text-shadow:0 12px 30px rgba(36,153,92,.16)}
+body.game-ui-v14 #lessonContent .syllable-item,
+body.game-ui-v14 #lessonContent .word-item,
+body.game-ui-v14 #lessonContent .phrase-item,
+body.game-ui-v14 #lessonContent .choice-item,
+body.game-ui-v14 #lessonContent .syllable-choice{
+  min-height:64px;
+  border:2px solid #e5ece8;
+  border-radius:19px;
+  background:#fff;
+  box-shadow:0 8px 20px rgba(20,48,34,.06);
+}
+
+/* =========================================================
+   EXERCICES — FOCUS MAXIMUM
+========================================================= */
+body.game-ui-v14 .practice-stage-v9,
+body.game-ui-v14 #lessonContent .lesson-box:has(.exercise-progress-v3),
+body.game-ui-v14 .mistake-question-panel,
+body.game-ui-v14 .maths-game-card{
+  width:min(960px,100%);
+  min-height:560px;
+  margin:0 auto;
+  padding:38px;
+  border:1px solid rgba(255,255,255,.56);
+  border-radius:36px;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 28px 80px rgba(2,12,30,.23);
+}
+body.game-ui-v14 .exercise-progress-v3{
+  width:max-content;max-width:100%;
+  margin:0 auto 22px;padding:10px 17px;
+  border-radius:999px;
+  color:#3d5670;background:#eef3f8;
+}
+body.game-ui-v14 .practice-stage-top-v9{
+  padding-bottom:17px;border-bottom:1px solid #e9eeeb;
+}
+body.game-ui-v14 .practice-stage-top-v9 h3{font-size:30px}
+body.game-ui-v14 .practice-prompt-v9,
+body.game-ui-v14 .question-zone,
+body.game-ui-v14 .maths-question-box{
+  min-height:190px;
+  margin:22px 0;
+  padding:30px;
+  border:0;
+  border-radius:28px;
+  display:grid;align-content:center;
+  background:
+    radial-gradient(circle at 15% 15%,rgba(255,255,255,.9),transparent 25%),
+    linear-gradient(145deg,#eef4ff,#f8f1ff 55%,#fff5e6);
+  box-shadow:inset 0 0 0 1px rgba(89,112,184,.08);
+}
+body.game-ui-v14 .practice-prompt-v9 strong,
+body.game-ui-v14 .maths-question,
+body.game-ui-v14 .question{font-size:clamp(35px,6vw,64px)!important;line-height:1.08}
+body.game-ui-v14 .practice-choices-v9,
+body.game-ui-v14 .choice-grid,
+body.game-ui-v14 .maths-answer-choices-v12,
+body.game-ui-v14 .mistake-review-choices{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:13px;
+}
+body.game-ui-v14 .practice-choice-v9,
+body.game-ui-v14 .choice-item,
+body.game-ui-v14 .maths-choice-button,
+body.game-ui-v14 .mistake-review-choices button{
+  min-height:78px;
+  padding:17px;
+  border:2px solid #e2e8e5;
+  border-radius:21px;
+  color:#213049;background:#fff;
+  box-shadow:0 9px 22px rgba(17,37,29,.06);
+  font-size:20px;
+  transition:.18s;
+}
+body.game-ui-v14 .practice-choice-v9:hover,
+body.game-ui-v14 .choice-item:hover,
+body.game-ui-v14 .maths-choice-button:hover,
+body.game-ui-v14 .mistake-review-choices button:hover{transform:translateY(-3px);border-color:#75d99c}
+body.game-ui-v14 .practice-choice-v9.selected,
+body.game-ui-v14 .maths-choice-button.selected,
+body.game-ui-v14 .mistake-review-choices button.selected{
+  border-color:#4dcc7f;background:#eafff1;color:#187e49;
+  box-shadow:0 12px 28px rgba(57,191,116,.15);
+}
+body.game-ui-v14 .practice-audio-v9,
+body.game-ui-v14 .listen-btn,
+body.game-ui-v14 .maths-listen-button{
+  min-height:52px;padding:12px 18px;border-radius:17px;
+  background:linear-gradient(135deg,#6f87e8,#5366c1);
+  box-shadow:0 10px 23px rgba(83,102,193,.22);
+}
+
+/* =========================================================
+   FENÊTRES UNIFIÉES
+========================================================= */
+body.game-ui-v14 .lumi-panel-overlay,
+body.game-ui-v14 .lumikids-dialog-overlay,
+body.game-ui-v14 .level-modal,
+body.game-ui-v14 .v13-overlay,
+body.game-ui-v14 .admin-code-overlay,
+body.game-ui-v14 .maths-keypad-overlay,
+.game-profile-overlay-v14{
+  z-index:1000000!important;
+  background:rgba(7,13,29,.68)!important;
+  backdrop-filter:blur(14px) saturate(.9)!important;
+}
+body.game-ui-v14 .lumi-settings-panel,
+body.game-ui-v14 .lumikids-dialog,
+body.game-ui-v14 .level-modal>div,
+body.game-ui-v14 .daily-chest-modal-v13,
+body.game-ui-v14 .admin-code-modal,
+body.game-ui-v14 .maths-keypad-modal,
+.game-profile-drawer-v14{
+  border:1px solid rgba(255,255,255,.58)!important;
+  border-radius:30px!important;
+  background:linear-gradient(155deg,rgba(255,255,255,.98),rgba(244,248,255,.96))!important;
+  box-shadow:0 35px 110px rgba(1,8,24,.38)!important;
+  animation:gameDialogInV14 .28s cubic-bezier(.2,.85,.2,1)!important;
+}
+@keyframes gameDialogInV14{from{opacity:0;transform:translateY(15px) scale(.96)}to{opacity:1;transform:none}}
+body.game-ui-v14 .lumi-panel-header,
+body.game-ui-v14 .lumikids-dialog-header{padding-bottom:15px;border-bottom:1px solid #e8edea}
+body.game-ui-v14 .lumi-panel-close,
+body.game-ui-v14 .admin-code-close,
+body.game-ui-v14 .maths-keypad-close,
+body.game-ui-v14 .v13-close{
+  border-radius:15px!important;background:#edf1f6!important;color:#4e5b70!important;
+}
+
+/* =========================================================
+   RÉSULTATS DE FIN
+========================================================= */
+body.game-ui-v14 .completion-panel,
+body.game-ui-v14 .practice-result-v9,
+body.game-ui-v14 .maths-result-card,
+body.game-ui-v14 .mistake-corrected{
+  width:min(820px,100%);
+  margin:0 auto;
+  padding:44px 36px;
+  border:1px solid rgba(255,255,255,.65);
+  border-radius:37px;
+  text-align:center;
+  background:
+    radial-gradient(circle at 50% 0,rgba(255,255,255,.95),transparent 29%),
+    linear-gradient(145deg,#e6fff0,#fff8d5 55%,#edf1ff);
+  box-shadow:0 30px 85px rgba(2,13,31,.24);
+}
+body.game-ui-v14 .completion-badge,
+body.game-ui-v14 .maths-result-icon,
+body.game-ui-v14 .mistake-corrected .big-star{
+  width:118px;height:118px;
+  border-radius:38px;
+  box-shadow:0 20px 48px rgba(15,44,27,.14);
+}
+body.game-ui-v14 .completion-panel h2,
+body.game-ui-v14 .practice-result-v9 h3,
+body.game-ui-v14 .maths-result-card h2,
+body.game-ui-v14 .mistake-corrected h3{font-size:clamp(32px,5vw,50px)}
+body.game-ui-v14 .result-details-v10,
+body.game-ui-v14 .maths-result-details-v12{
+  grid-template-columns:repeat(4,1fr);
+  gap:11px;
+}
+body.game-ui-v14 .result-details-v10 article,
+body.game-ui-v14 .maths-result-details-v12 article{
+  padding:17px;border-radius:19px;background:rgba(255,255,255,.78);
+}
+body.game-ui-v14 .exercise-finish-actions,
+body.game-ui-v14 .maths-result-actions{gap:12px}
+body.game-ui-v14 .exercise-finish-actions button,
+body.game-ui-v14 .maths-result-actions button{min-width:180px}
+.game-result-ribbon-v14{
+  width:max-content;max-width:100%;margin:0 auto 16px;padding:8px 14px;
+  border-radius:999px;color:#78570e;background:#ffe891;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.12em;
+}
+
+/* =========================================================
+   CARNET DES ERREURS
+========================================================= */
+body.game-ui-v14[data-game-screen="mistakeReviewScreen"]{
+  background:
+    radial-gradient(circle at 13% 18%,rgba(239,116,109,.23),transparent 27%),
+    linear-gradient(145deg,#181b31,#3d2b45 62%,#26354d);
+}
+body.game-ui-v14 #mistakeReviewScreen{
+  padding-bottom:90px;
+}
+body.game-ui-v14 #mistakeReviewScreen::before{
+  content:"";
+  position:absolute;inset:120px max(0px,calc((100% - var(--game-content-width))/2)) 35px;
+  z-index:-1;border-radius:38px;
+  background:linear-gradient(90deg,rgba(255,255,255,.97) 0 49.6%,#eadfd5 49.8% 50.2%,rgba(255,255,255,.97) 50.4%);
+  box-shadow:0 30px 90px rgba(3,9,25,.27);
+}
+body.game-ui-v14 #mistakeReviewScreen .mistake-summary-card,
+body.game-ui-v14 #mistakeReviewScreen .mistake-tools-v10,
+body.game-ui-v14 #mistakeReviewScreen .mistake-review-content{
+  width:min(1100px,calc(100% - 54px));margin-left:auto;margin-right:auto;
+}
+body.game-ui-v14 #mistakeReviewScreen .mistake-summary-card{
+  border:1px solid #f2e6de;border-radius:26px;background:#fffaf5;box-shadow:none;
+}
+.mistake-progress-v14{
+  width:min(1100px,calc(100% - 54px));
+  margin:14px auto 18px;padding:15px 18px;
+  border-radius:19px;background:#fff9f3;
+}
+.mistake-progress-v14>div{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:12px;font-weight:900;color:#7d685c}
+.mistake-progress-v14 i{display:block;height:10px;border-radius:99px;overflow:hidden;background:#efe4dc}
+.mistake-progress-v14 i span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ef8275,#61ce8c)}
+body.game-ui-v14 #mistakeReviewScreen .mistake-tools-v10{
+  padding:12px;border-radius:20px;background:#fff;border:1px solid #eee5df;
+}
+body.game-ui-v14 #mistakeReviewScreen .mistake-filters-v10 button{
+  border-radius:13px;background:#f7f1ec;color:#806d62;
+}
+body.game-ui-v14 #mistakeReviewScreen .mistake-filters-v10 button.active{background:#e66f64;color:#fff}
+body.game-ui-v14 #mistakeReviewScreen .mistake-card{
+  border:1px solid #eee6df;box-shadow:none;background:#fffdfb;
+}
+
+/* =========================================================
+   MATHS — LABORATOIRE DES NOMBRES
+========================================================= */
+body.game-ui-v14[data-game-section="math"]{
+  background:
+    radial-gradient(circle at 10% 12%,rgba(101,133,236,.31),transparent 28%),
+    radial-gradient(circle at 88% 13%,rgba(255,166,81,.2),transparent 25%),
+    linear-gradient(145deg,#11182e,#222e5a 58%,#423361);
+}
+body.game-ui-v14 .maths-addon-screen{
+  --math-blue:#7088ed;
+  --math-blue-dark:#4d5dc1;
+  --math-orange:#ff9e57;
+  --math-green:#52cf87;
+  --math-ink:#1d2942;
+  --math-muted:#6e7890;
+}
+body.game-ui-v14 .maths-hero{
+  min-height:330px;padding:45px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:38px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 78% 30%,rgba(255,255,255,.2),transparent 23%),
+    linear-gradient(135deg,#536dcc,#7058b0 58%,#d17f52);
+  box-shadow:0 28px 80px rgba(3,10,26,.26);
+}
+body.game-ui-v14 .maths-hero-copy h2{color:#fff;font-size:clamp(40px,6vw,68px)}
+body.game-ui-v14 .maths-hero-copy p{color:rgba(255,255,255,.74);font-size:17px}
+body.game-ui-v14 .maths-floating-card{
+  width:220px;min-height:175px;
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:36px;
+  color:#4e5ebd;background:rgba(255,255,255,.94);
+  box-shadow:0 25px 60px rgba(5,12,35,.27);
+  font-size:48px;
+}
+body.game-ui-v14 .maths-section-title small{color:#b9c8ff}
+body.game-ui-v14 .maths-section-title h3{color:#fff;font-size:32px}
+body.game-ui-v14 .maths-operation-grid,
+body.game-ui-v14 .maths-submenu-grid{gap:18px}
+body.game-ui-v14 .maths-operation-card,
+body.game-ui-v14 .maths-submenu-card,
+body.game-ui-v14 .maths-settings-card,
+body.game-ui-v14 .maths-course-card{
+  border:1px solid rgba(255,255,255,.44);
+  border-radius:31px;
+  box-shadow:0 22px 58px rgba(3,10,27,.22);
+}
+body.game-ui-v14 .maths-operation-card{min-height:230px}
+body.game-ui-v14 .maths-operation-card:hover,
+body.game-ui-v14 .maths-submenu-card:hover{transform:translateY(-7px)}
+body.game-ui-v14 .maths-operation-symbol{width:96px;height:96px;border-radius:29px;font-size:58px}
+body.game-ui-v14 .maths-game-card{color:var(--game-ink)}
+body.game-ui-v14 .maths-game-header{padding-bottom:18px;border-bottom:1px solid #e8edf3}
+body.game-ui-v14 .maths-visual-help-v12{min-height:130px;border-radius:22px;background:#f4f7ff}
+
+/* =========================================================
+   SALLE DES TROPHÉES
+========================================================= */
+body.game-ui-v14[data-game-screen="rewardsScreen"]{
+  background:
+    radial-gradient(circle at 13% 13%,rgba(247,205,79,.26),transparent 26%),
+    radial-gradient(circle at 87% 16%,rgba(155,114,232,.23),transparent 29%),
+    linear-gradient(145deg,#171a30,#3e334d 58%,#56452e);
+}
+body.game-ui-v14 #rewardsScreen{
+  position:relative;
+}
+body.game-ui-v14 #rewardsScreen::before{
+  content:"";position:absolute;inset:122px 0 35px;z-index:-1;
+  border:1px solid rgba(255,255,255,.13);border-radius:42px;
+  background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,.08) 0 2px,transparent 2px 210px),
+    linear-gradient(145deg,rgba(91,65,45,.36),rgba(39,35,61,.36));
+}
+body.game-ui-v14 #rewardsScreen .wallet-v3{
+  color:#513d13;background:linear-gradient(145deg,#fff6bd,#ffd967);
+  box-shadow:0 20px 55px rgba(3,10,25,.22);
+}
+body.game-ui-v14 #rewardsScreen .reward-overview-v10 article,
+body.game-ui-v14 #rewardsScreen .achievement{
+  border:1px solid rgba(255,255,255,.45);
+  background:rgba(255,255,255,.94);
+  box-shadow:0 18px 42px rgba(3,11,26,.2);
+}
+body.game-ui-v14 #rewardsScreen .achievement-grid{
+  grid-template-columns:repeat(4,1fr);gap:16px;
+}
+body.game-ui-v14 #rewardsScreen .achievement{
+  min-height:210px;padding:24px 18px;border-radius:27px;
+  transition:.2s;
+}
+body.game-ui-v14 #rewardsScreen .achievement:not(.locked):hover{transform:translateY(-7px);box-shadow:0 26px 55px rgba(3,10,25,.28)}
+body.game-ui-v14 #rewardsScreen .achievement-icon{
+  width:82px;height:82px;border-radius:27px;
+  background:linear-gradient(145deg,#fff7c8,#ffd86d);
+  box-shadow:0 12px 26px rgba(181,130,28,.16);
+}
+body.game-ui-v14 #rewardsScreen .achievement.locked{opacity:.55;background:rgba(224,228,232,.86)}
+body.game-ui-v14 #rewardsScreen .achievement-toolbar-v13 button{background:rgba(255,255,255,.13);color:#dbe1ef}
+body.game-ui-v14 #rewardsScreen .achievement-toolbar-v13 button.active{background:linear-gradient(145deg,#f8d767,#f0ba41);color:#5d430b}
+body.game-ui-v14 #rewardsScreen .achievement-progress-v13{background:rgba(255,255,255,.92)}
+
+/* =========================================================
+   PARENTS — TABLEAU DE BORD SOBRE
+========================================================= */
+body.game-ui-v14[data-game-screen="parentScreen"]{
+  background:linear-gradient(145deg,#eaf0f7,#f8fafc 58%,#edf1f8);
+}
+body.game-ui-v14[data-game-screen="parentScreen"]::before,
+body.game-ui-v14[data-game-screen="parentScreen"]::after{display:none}
+body.game-ui-v14 #parentScreen{color:#243047}
+body.game-ui-v14 #parentScreen .page-heading{
+  color:#243047;background:#fff;border-color:#dfe6ef;box-shadow:0 10px 28px rgba(33,49,75,.08)
+}
+body.game-ui-v14 #parentScreen .page-heading h2{color:#243047}
+body.game-ui-v14 #parentScreen .page-heading .eyebrow{color:#5972bf}
+body.game-ui-v14 #parentScreen .back-btn{color:#4c5d79;background:#edf2f7;border-color:#e0e7ef}
+body.game-ui-v14 #parentScreen .parent-profile,
+body.game-ui-v14 #parentScreen .parent-stat-grid article,
+body.game-ui-v14 #parentScreen .parent-progress-card,
+body.game-ui-v14 #parentScreen .parent-section-v10,
+body.game-ui-v14 #parentScreen .parent-chart-v13,
+body.game-ui-v14 #parentScreen .parent-math-summary-v12{
+  border:1px solid #dfe6ee;
+  background:#fff;
+  box-shadow:0 10px 28px rgba(36,52,78,.07);
+}
+body.game-ui-v14 #parentScreen .parent-profile{background:linear-gradient(135deg,#f3f6ff,#fff)}
+body.game-ui-v14 #parentScreen .parent-stat-grid{grid-template-columns:repeat(4,1fr)}
+body.game-ui-v14 #parentScreen .parent-stat-grid article{border-radius:18px}
+body.game-ui-v14 #parentScreen .parent-actions-v13 button{box-shadow:none}
+body.game-ui-v14 #parentScreen .parent-section-v10{padding:22px;border-radius:23px}
+
+/* =========================================================
+   PROFIL / MENU SECONDAIRE
+========================================================= */
+.game-profile-overlay-v14{
+  position:fixed;inset:0;z-index:1000000;
+  display:grid;place-items:center;padding:20px;
+}
+.game-profile-overlay-v14.hidden{display:none!important}
+.game-profile-drawer-v14{
+  width:min(520px,100%);padding:25px;
+}
+.game-profile-header-v14{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.game-profile-avatar-v14{width:68px;height:68px;border-radius:22px;display:grid;place-items:center;background:#eafff2;font-size:34px}
+.game-profile-header-v14 div{flex:1}
+.game-profile-header-v14 small{display:block;color:#79849a;font-size:10px;text-transform:uppercase;font-weight:900}
+.game-profile-header-v14 strong{display:block;font-size:25px}
+.game-profile-header-v14 button{width:42px;height:42px;border:0;border-radius:14px;background:#edf1f6;font-size:24px;cursor:pointer}
+.game-profile-grid-v14{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.game-profile-grid-v14 button{
+  min-height:105px;padding:16px;border:1px solid #e4e9ef;border-radius:20px;
+  text-align:left;background:#f8fafc;color:#27334a;cursor:pointer;
+}
+.game-profile-grid-v14 button:hover{border-color:#94a8e8;background:#f1f4ff}
+.game-profile-grid-v14 span{display:block;font-size:24px;margin-bottom:8px}
+.game-profile-grid-v14 strong{display:block}
+.game-profile-grid-v14 small{color:#79849a}
+
+/* =========================================================
+   TRANSITIONS ET TOASTS
+========================================================= */
+.game-transition-v14{
+  position:fixed;inset:0;z-index:999900;
+  display:grid;place-items:center;
+  color:#fff;background:rgba(11,18,37,.66);
+  backdrop-filter:blur(10px);
+  opacity:0;pointer-events:none;transition:opacity .16s ease;
+}
+.game-transition-v14.active{opacity:1;pointer-events:auto}
+.game-transition-v14 div{text-align:center}
+.game-transition-v14 span{display:block;font-size:46px;animation:gameTransitionPulseV14 .8s ease-in-out infinite}
+.game-transition-v14 strong{display:block;margin-top:9px;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+@keyframes gameTransitionPulseV14{50%{transform:scale(1.13);filter:drop-shadow(0 0 16px rgba(255,226,115,.65))}}
+body.game-ui-v14 .toast{
+  z-index:1000100;
+  min-width:min(420px,calc(100% - 32px));
+  max-width:620px;
+  bottom:28px;
+  padding:15px 19px;
+  border:1px solid rgba(255,255,255,.3);
+  border-radius:18px;
+  color:#fff;background:linear-gradient(145deg,rgba(28,40,70,.97),rgba(49,62,100,.97));
+  box-shadow:0 18px 48px rgba(2,8,22,.35);
+  text-align:center;font-weight:850;
+  backdrop-filter:blur(15px);
+}
+body.game-ui-v14 .toast:not(.hidden){animation:gameToastInV14 .3s ease}
+@keyframes gameToastInV14{from{opacity:0;transform:translate(-50%,15px) scale(.97)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+
+/* Ne pas refaire le design propre des royaumes : la carte 3D et ses
+   positions restent volontairement celles de la version précédente. */
+
+/* ---------- Entraînement plus aéré ---------- */
+body.game-ui-v14 #readingExercisesScreen .practice-chooser-v9,
+body.game-ui-v14 #readingExercisesScreen .practice-lesson-panel-v9{
+  border-radius:31px;
+}
+body.game-ui-v14 #readingExercisesScreen .practice-lessons-grid-v9{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:15px;
+}
+body.game-ui-v14 #readingExercisesScreen .practice-letter-card-v9{
+  min-height:132px;
+  padding:20px 15px;
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:23px;
+  box-shadow:0 13px 32px rgba(4,14,30,.13);
+}
+body.game-ui-v14 #readingExercisesScreen .practice-letter-card-v9 strong{font-size:30px}
+body.game-ui-v14 #readingExercisesScreen .practice-exercise-grid-v9{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+body.game-ui-v14 #readingExercisesScreen .practice-exercise-card-v9{
+  min-height:115px;
+  padding:18px;
+  border-radius:22px;
+}
+
+/* ---------- Porte d’accès Parents ---------- */
+.parent-gate-overlay-v14{
+  position:fixed;inset:0;z-index:1000000;
+  display:grid;place-items:center;padding:20px;
+  background:rgba(7,13,29,.72);
+  backdrop-filter:blur(15px);
+}
+.parent-gate-overlay-v14.hidden{display:none!important}
+.parent-gate-card-v14{
+  width:min(460px,100%);
+  padding:30px;
+  border:1px solid rgba(255,255,255,.58);
+  border-radius:31px;
+  text-align:center;
+  background:linear-gradient(155deg,#fff,#f3f6fb);
+  box-shadow:0 35px 110px rgba(1,8,24,.4);
+}
+.parent-gate-icon-v14{
+  width:88px;height:88px;margin:0 auto 17px;
+  border-radius:28px;display:grid;place-items:center;
+  background:#edf2ff;color:#5269bd;font-size:42px;
+}
+.parent-gate-card-v14 small{color:#6274b0;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
+.parent-gate-card-v14 h2{margin:7px 0;font-size:30px}
+.parent-gate-card-v14 p{color:#748095;line-height:1.5}
+.parent-hold-v14{
+  position:relative;
+  width:100%;min-height:61px;margin-top:18px;
+  border:0;border-radius:19px;overflow:hidden;
+  color:#fff;background:#394d86;
+  font-weight:950;cursor:pointer;
+  touch-action:none;
+}
+.parent-hold-v14 span{position:relative;z-index:2}
+.parent-hold-v14 i{
+  position:absolute;inset:0 auto 0 0;width:0;
+  background:linear-gradient(90deg,#5fd390,#8de2ad);
+  transition:width .08s linear;
+}
+.parent-gate-cancel-v14{
+  width:100%;min-height:48px;margin-top:9px;
+  border:0;border-radius:16px;
+  color:#5e6b7f;background:#edf1f5;
+  font-weight:900;cursor:pointer;
+}
+
+
+/* =========================================================
+   LUMIKIDS V14 — RESPONSIVE GAME UI
+========================================================= */
+
+@media (max-width:1180px){
+  :root{--game-nav-width:78px;--game-content-width:1120px}
+  .game-side-nav-v14{width:64px;left:7px}
+  .game-side-nav-v14 button{width:50px;height:52px}
+  .game-side-nav-v14 .game-nav-mark-v14{width:46px;height:46px}
+  body.game-ui-v14 .game-header{left:calc(var(--game-nav-width) + 10px);right:10px}
+  body.game-ui-v14 .game-header{grid-template-columns:auto minmax(180px,1fr) auto}
+  body.game-ui-v14 .brand-button{min-width:150px}
+  .game-hud-level-v14,.game-hud-streak-v14{min-width:54px}
+  body.game-ui-v14 #homeScreen .rewards-v3,
+  body.game-ui-v14 #homeScreen .mistakes-v3,
+  body.game-ui-v14 #homeScreen .world-map-v3,
+  body.game-ui-v14 #homeScreen .parents-v3{grid-column:span 6;grid-template-columns:72px 1fr auto;text-align:left}
+  body.game-ui-v14 #homeScreen .rewards-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .mistakes-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .world-map-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .parents-v3 .activity-symbol{margin:0}
+  body.game-ui-v14 #rewardsScreen .achievement-grid{grid-template-columns:repeat(3,1fr)}
+}
+
+@media (max-width:900px){
+  :root{--game-nav-width:0px;--game-hud-height:82px}
+  body.game-ui-v14{padding-bottom:76px}
+  body.game-ui-v14 .app{padding-left:0}
+  body.game-ui-v14::after{left:0}
+  .game-side-nav-v14{display:none}
+  .game-bottom-nav-v14{
+    position:fixed;
+    z-index:1250;
+    left:10px;right:10px;bottom:8px;
+    min-height:64px;
+    padding:7px;
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:23px;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:4px;
+    background:linear-gradient(145deg,rgba(20,29,54,.97),rgba(35,48,82,.96));
+    box-shadow:0 18px 55px rgba(2,8,22,.38);
+    backdrop-filter:blur(22px);
+  }
+  .game-bottom-nav-v14 button{
+    min-width:0;
+    padding:6px 3px;
+    border-radius:16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    color:#b9c3dc;background:transparent;
+  }
+  .game-bottom-nav-v14 button.active{color:#14213c;background:linear-gradient(145deg,#83e4aa,#fce48d)}
+  .game-bottom-nav-v14 button span{font-size:20px;line-height:1}
+  .game-bottom-nav-v14 button small{font-size:8px;font-weight:900}
+
+  body.game-ui-v14 .game-header{
+    top:8px;left:8px;right:8px;
+    height:66px;
+    grid-template-columns:auto minmax(110px,1fr) auto;
+    gap:8px;padding:7px 9px;border-radius:20px;
+  }
+  body.game-ui-v14 .brand-button{min-width:auto;padding:2px}
+  body.game-ui-v14 .brand-button>div:last-child{display:none}
+  body.game-ui-v14 .brand-button .mascot{width:46px;height:46px;min-width:46px}
+  .game-hud-player-v14{grid-template-columns:auto minmax(95px,1fr) auto}
+  .game-hud-back-v14{width:38px;height:38px;border-radius:13px}
+  .game-hud-level-v14{min-width:50px;padding:7px}
+  .game-hud-streak-v14{display:none}
+  body.game-ui-v14 .top-resources>span{min-width:58px;padding:8px 7px;font-size:12px}
+  body.game-ui-v14 .top-icon-action,
+  body.game-ui-v14 .storybook-top-button{width:38px;height:38px;min-width:38px;border-radius:13px}
+  body.game-ui-v14 #accountTopButton{display:none}
+
+  body.game-ui-v14 .screen{
+    width:min(100% - 24px,var(--game-content-width));
+    padding:22px 0 92px;
+  }
+  body.game-ui-v14 .page-heading{margin-bottom:17px;padding:9px 11px;border-radius:19px}
+  body.game-ui-v14 .page-heading h2{font-size:24px}
+  body.game-ui-v14 .back-btn{min-height:41px;padding:8px 10px;font-size:12px}
+
+  body.game-ui-v14 #homeScreen .hero-v3{min-height:340px;padding:36px;border-radius:32px;grid-template-columns:1.25fr .75fr}
+  body.game-ui-v14 #homeScreen .hero-copy h2{font-size:clamp(40px,8vw,62px)}
+  body.game-ui-v14 #homeScreen .hero-mascot img{width:220px;height:220px}
+  body.game-ui-v14 #homeScreen .level-panel{width:calc(100% - 36px)}
+  body.game-ui-v14 #homeScreen .activity-v3{grid-column:span 6}
+  body.game-ui-v14 #homeScreen .activity-grid-v3{grid-template-columns:repeat(12,1fr)}
+
+  body.game-ui-v14 #readingHome .reading-menu-v3{grid-template-columns:1fr;gap:16px;padding:18px}
+  body.game-ui-v14 #readingHome .reading-menu-v3 button{
+    min-height:220px;
+    border-radius:24px;
+    display:grid;
+    grid-template-columns:100px 1fr auto;
+    align-items:center;
+    justify-content:initial;
+    transform:none;
+  }
+  body.game-ui-v14 #readingHome .reading-icon{
+    position:relative;top:auto;left:auto;transform:none;
+    width:92px;height:92px;border-radius:28px;
+  }
+  body.game-ui-v14 #readingHome .reading-menu-v3 button>b{position:relative;right:auto;bottom:auto}
+
+  body.game-ui-v14 #lessonScreen{
+    grid-template-columns:230px minmax(0,1fr);
+    column-gap:16px;
+  }
+  body.game-ui-v14 #lessonScreen>.lesson-title-box{min-height:420px;padding:22px}
+  body.game-ui-v14 #lessonScreen .lesson-title-box .lesson-icon.big{width:145px;height:145px}
+  body.game-ui-v14 #lessonContent>.lesson-box,
+  body.game-ui-v14 #lessonContent .lesson-box{padding:25px}
+
+  body.game-ui-v14 .practice-stage-v9,
+  body.game-ui-v14 #lessonContent .lesson-box:has(.exercise-progress-v3),
+  body.game-ui-v14 .mistake-question-panel,
+  body.game-ui-v14 .maths-game-card{min-height:500px;padding:28px}
+
+  body.game-ui-v14 #rewardsScreen .achievement-grid{grid-template-columns:repeat(2,1fr)}
+  body.game-ui-v14 #parentScreen .parent-stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+@media (max-width:680px){
+  :root{--game-hud-height:74px}
+  body.game-ui-v14 .game-header{height:60px;border-radius:18px}
+  body.game-ui-v14 .brand-button .mascot{width:42px;height:42px;min-width:42px;border-radius:14px}
+  .game-hud-back-v14{width:35px;height:35px}
+  .game-hud-identity-v14>div{margin-bottom:4px}
+  .game-hud-identity-v14 strong{font-size:11px}
+  .game-hud-identity-v14 small{font-size:7px}
+  .game-hud-xp-v14{height:6px}
+  .game-hud-level-v14{display:none}
+  body.game-ui-v14 .top-resources>span{min-width:47px;padding:7px 5px;font-size:11px}
+  body.game-ui-v14 .top-resources>span b{font-size:11px}
+  body.game-ui-v14 #settingsTopButton{display:none}
+  body.game-ui-v14 .storybook-top-button{width:35px;height:35px;min-width:35px}
+  body.game-ui-v14 .screen{width:calc(100% - 18px);padding-top:16px}
+
+  body.game-ui-v14 .page-heading{
+    min-height:58px;
+    grid-template-columns:auto 1fr auto;
+    gap:8px;
+  }
+  body.game-ui-v14 .page-heading .eyebrow{font-size:8px}
+  body.game-ui-v14 .page-heading h2{font-size:19px}
+  body.game-ui-v14 .page-heading .mastery-pill{padding:7px 8px;font-size:11px}
+
+  body.game-ui-v14 #homeScreen .hero-v3{
+    min-height:auto;
+    padding:28px 24px 160px;
+    display:block;
+    border-radius:28px;
+  }
+  body.game-ui-v14 #homeScreen .hero-copy{max-width:none}
+  body.game-ui-v14 #homeScreen .hero-copy h2{font-size:42px;line-height:.98}
+  body.game-ui-v14 #homeScreen .hero-copy>p:not(.eyebrow):not(.resume-hint-v10){font-size:14px}
+  body.game-ui-v14 #homeScreen .continue-button{width:100%;min-width:0}
+  body.game-ui-v14 #homeScreen .hero-mascot{
+    position:absolute;right:0;bottom:-12px;min-height:190px;width:210px;
+  }
+  body.game-ui-v14 #homeScreen .hero-mascot img{width:190px;height:190px}
+  body.game-ui-v14 #homeScreen .hero-mascot::before{width:190px;height:190px}
+  body.game-ui-v14 #homeScreen .hero-mascot span{top:5px;right:18px;font-size:11px;padding:8px 10px}
+  body.game-ui-v14 #homeScreen .level-panel{
+    width:calc(100% - 18px);margin-top:-22px;
+    grid-template-columns:auto 1fr;
+    padding:13px;
+  }
+  body.game-ui-v14 #homeScreen .level-circle{min-width:62px}
+  body.game-ui-v14 #homeScreen .streak-box{grid-column:1/-1;display:flex;justify-content:center;gap:5px;padding:7px}
+  body.game-ui-v14 #homeScreen .home-title{margin-top:28px}
+  body.game-ui-v14 #homeScreen .home-title h2{font-size:27px}
+  body.game-ui-v14 #homeScreen .activity-grid-v3{display:grid;grid-template-columns:1fr;gap:12px}
+  body.game-ui-v14 #homeScreen .activity-v3,
+  body.game-ui-v14 #homeScreen .reading-v3,
+  body.game-ui-v14 #homeScreen .maths-v3,
+  body.game-ui-v14 #homeScreen .rewards-v3,
+  body.game-ui-v14 #homeScreen .mistakes-v3,
+  body.game-ui-v14 #homeScreen .world-map-v3,
+  body.game-ui-v14 #homeScreen .parents-v3{
+    grid-column:auto;
+    min-height:132px;
+    padding:17px;
+    grid-template-columns:70px 1fr auto;
+    text-align:left;
+    border-radius:23px;
+  }
+  body.game-ui-v14 #homeScreen .activity-image,
+  body.game-ui-v14 #homeScreen .activity-symbol,
+  body.game-ui-v14 #homeScreen .rewards-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .mistakes-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .world-map-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .parents-v3 .activity-symbol{width:70px;height:70px;margin:0;border-radius:20px}
+  body.game-ui-v14 #homeScreen .activity-v3 strong{font-size:22px}
+  body.game-ui-v14 #homeScreen .daily-challenge,
+  body.game-ui-v14 #homeScreen .daily-chest-v13{grid-template-columns:auto 1fr;padding:14px}
+  body.game-ui-v14 #homeScreen .daily-challenge>b,
+  body.game-ui-v14 #homeScreen .daily-chest-v13>b{grid-column:2}
+
+  body.game-ui-v14 #readingHome::before{inset:95px 0 25px}
+  body.game-ui-v14 #readingHome .reading-menu-v3{padding:9px}
+  body.game-ui-v14 #readingHome .reading-menu-v3 button{
+    min-height:170px;
+    padding:20px;
+    grid-template-columns:76px 1fr auto;
+    gap:13px;
+  }
+  body.game-ui-v14 #readingHome .reading-icon{width:72px;height:72px;border-radius:22px;font-size:31px}
+  body.game-ui-v14 #readingHome .reading-menu-v3 strong{font-size:22px}
+  body.game-ui-v14 #readingHome .reading-menu-v3 em{font-size:11px}
+
+  body.game-ui-v14 #lessonScreen{display:block}
+  body.game-ui-v14 #lessonScreen>.lesson-title-box{
+    position:relative;top:auto;
+    min-height:0;
+    margin-bottom:13px;
+    padding:17px;
+    display:grid;
+    grid-template-columns:85px 1fr;
+    gap:15px;
+    text-align:left;
+    border-radius:24px;
+  }
+  body.game-ui-v14 #lessonScreen .lesson-title-box .lesson-icon.big{width:85px;height:85px;margin:0;border-radius:24px;padding:8px}
+  body.game-ui-v14 #lessonScreen .lesson-title-box h2{font-size:23px}
+  body.game-ui-v14 #lessonScreen>.lesson-tabs{margin-bottom:11px;padding:8px;border-radius:19px}
+  body.game-ui-v14 #lessonScreen>.lesson-tabs button{min-height:43px;padding:9px 12px;font-size:11px}
+  body.game-ui-v14 #lessonContent>.lesson-box,
+  body.game-ui-v14 #lessonContent .lesson-box{min-height:0;padding:20px;border-radius:25px}
+  body.game-ui-v14 #lessonContent .big-letter{font-size:100px}
+
+  body.game-ui-v14 .practice-stage-v9,
+  body.game-ui-v14 #lessonContent .lesson-box:has(.exercise-progress-v3),
+  body.game-ui-v14 .mistake-question-panel,
+  body.game-ui-v14 .maths-game-card{
+    min-height:calc(100dvh - 180px);
+    padding:20px;
+    border-radius:27px;
+  }
+  body.game-ui-v14 .practice-prompt-v9,
+  body.game-ui-v14 .question-zone,
+  body.game-ui-v14 .maths-question-box{min-height:145px;padding:20px;border-radius:22px}
+  body.game-ui-v14 .practice-choices-v9,
+  body.game-ui-v14 .choice-grid,
+  body.game-ui-v14 .maths-answer-choices-v12,
+  body.game-ui-v14 .mistake-review-choices{grid-template-columns:1fr}
+  body.game-ui-v14 .practice-choice-v9,
+  body.game-ui-v14 .choice-item,
+  body.game-ui-v14 .maths-choice-button,
+  body.game-ui-v14 .mistake-review-choices button{min-height:60px;padding:13px;font-size:17px}
+
+  body.game-ui-v14 .completion-panel,
+  body.game-ui-v14 .practice-result-v9,
+  body.game-ui-v14 .maths-result-card,
+  body.game-ui-v14 .mistake-corrected{padding:28px 18px;border-radius:28px}
+  body.game-ui-v14 .result-details-v10,
+  body.game-ui-v14 .maths-result-details-v12{grid-template-columns:repeat(2,1fr)}
+  body.game-ui-v14 .exercise-finish-actions,
+  body.game-ui-v14 .maths-result-actions{flex-direction:column}
+  body.game-ui-v14 .exercise-finish-actions button,
+  body.game-ui-v14 .maths-result-actions button{width:100%;min-width:0}
+
+  body.game-ui-v14 #mistakeReviewScreen::before{inset:85px 0 25px;background:rgba(255,255,255,.97)}
+  body.game-ui-v14 #mistakeReviewScreen .mistake-summary-card,
+  body.game-ui-v14 #mistakeReviewScreen .mistake-tools-v10,
+  body.game-ui-v14 #mistakeReviewScreen .mistake-review-content,
+  .mistake-progress-v14{width:calc(100% - 16px)}
+
+  body.game-ui-v14 .maths-hero{min-height:280px;padding:27px;border-radius:28px;display:block}
+  body.game-ui-v14 .maths-hero-copy h2{font-size:41px}
+  body.game-ui-v14 .maths-hero-visual{min-height:145px;margin-top:15px}
+  body.game-ui-v14 .maths-floating-card{width:165px;min-height:125px;font-size:36px}
+  body.game-ui-v14 .maths-operation-grid,
+  body.game-ui-v14 .maths-submenu-grid{grid-template-columns:1fr}
+  body.game-ui-v14 .maths-operation-card{min-height:160px}
+
+  body.game-ui-v14 #rewardsScreen .achievement-grid{grid-template-columns:1fr 1fr;gap:10px}
+  body.game-ui-v14 #rewardsScreen .achievement{min-height:180px;padding:16px 10px}
+  body.game-ui-v14 #rewardsScreen .achievement-icon{width:64px;height:64px;border-radius:21px}
+  body.game-ui-v14 #rewardsScreen .achievement-toolbar-v13{overflow:auto;flex-wrap:nowrap;padding-bottom:4px}
+  body.game-ui-v14 #rewardsScreen .achievement-toolbar-v13 button{min-width:max-content}
+
+  body.game-ui-v14 #parentScreen .parent-stat-grid{grid-template-columns:1fr 1fr}
+  body.game-ui-v14 #parentScreen .parent-profile{align-items:flex-start;gap:12px}
+  body.game-ui-v14 #parentScreen .parent-profile h3{font-size:25px}
+  .parent-week-bars-v13{min-height:120px}
+  .game-profile-grid-v14{grid-template-columns:1fr}
+}
+
+@media (max-width:420px){
+  body.game-ui-v14 .game-header{grid-template-columns:auto 1fr auto}
+  .game-hud-back-v14{display:none}
+  .game-hud-player-v14{grid-template-columns:1fr}
+  body.game-ui-v14 .top-resources>span{min-width:42px}
+  body.game-ui-v14 #homeScreen .hero-v3{padding:24px 19px 145px}
+  body.game-ui-v14 #homeScreen .hero-copy h2{font-size:36px}
+  body.game-ui-v14 #homeScreen .hero-mascot{width:175px}
+  body.game-ui-v14 #homeScreen .hero-mascot img{width:165px;height:165px}
+  body.game-ui-v14 #homeScreen .activity-v3{grid-template-columns:60px 1fr auto;padding:14px}
+  body.game-ui-v14 #homeScreen .activity-image,
+  body.game-ui-v14 #homeScreen .activity-symbol,
+  body.game-ui-v14 #homeScreen .rewards-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .mistakes-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .world-map-v3 .activity-symbol,
+  body.game-ui-v14 #homeScreen .parents-v3 .activity-symbol{width:60px;height:60px}
+  body.game-ui-v14 #readingHome .reading-menu-v3 button{grid-template-columns:64px 1fr auto;padding:15px}
+  body.game-ui-v14 #readingHome .reading-icon{width:60px;height:60px;font-size:27px}
+  body.game-ui-v14 #rewardsScreen .achievement-grid{grid-template-columns:1fr}
+  .game-bottom-nav-v14 button small{font-size:7px}
+}
+
+@media (orientation:landscape) and (max-height:560px){
+  :root{--game-hud-height:66px}
+  body.game-ui-v14 .game-header{height:54px}
+  body.game-ui-v14 .screen{padding-top:10px}
+  body.game-ui-v14 #homeScreen .hero-v3{min-height:280px;padding:28px 38px}
+  body.game-ui-v14 #homeScreen .hero-copy h2{font-size:45px}
+  body.game-ui-v14 #homeScreen .hero-mascot img{width:190px;height:190px}
+  .game-bottom-nav-v14{min-height:54px}
+  body.game-ui-v14 .practice-stage-v9,
+  body.game-ui-v14 .maths-game-card{min-height:420px}
+}
+
+body.v10-reduced-motion .game-backdrop-v14::before,
+body.v10-reduced-motion .game-backdrop-v14::after,
+body.v10-reduced-motion #homeScreen .hero-v3::after,
+body.v10-reduced-motion .game-transition-v14 span{
+  animation:none!important;
+}
+
+@media(max-width:1080px){
+  body.game-ui-v14 #readingExercisesScreen .practice-lessons-grid-v9{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:680px){
+  body.game-ui-v14 #readingExercisesScreen .practice-lessons-grid-v9{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  body.game-ui-v14 #readingExercisesScreen .practice-letter-card-v9{min-height:110px;padding:15px 10px}
+  body.game-ui-v14 #readingExercisesScreen .practice-exercise-grid-v9{grid-template-columns:1fr}
+  .parent-gate-card-v14{padding:24px 18px;border-radius:25px}
+}
+
+
+/* =========================================================
+   LUMIKIDS V14.1 — CORRECTIF INTERFACE PRINCIPALE
+   Les règles ci-dessous sont volontairement dans style.css afin que
+   l'interface de jeu reste stylée même si les fichiers CSS V14 séparés
+   ne sont pas présents dans le dossier du site.
+========================================================= */
+
+html{min-width:0;overflow-x:hidden}
+body.game-ui-v14{min-width:0;overflow-x:hidden}
+body.game-ui-v14 *,
+body.game-ui-v14 *::before,
+body.game-ui-v14 *::after{box-sizing:border-box}
+
+/* Sécurité : aucun menu V14 ne doit apparaître comme du HTML brut. */
+.game-profile-overlay-v14.hidden,
+.parent-gate-overlay-v14.hidden,
+.game-bottom-nav-v14.hidden,
+.game-transition-v14:not(.active){pointer-events:none}
+.game-profile-overlay-v14.hidden,
+.parent-gate-overlay-v14.hidden{display:none!important}
+body.game-ui-v14.profile-open-v14,
+body.game-ui-v14.parent-code-open-v14{overflow:hidden!important}
+
+/* Barre latérale ordinateur. */
+@media (min-width:901px){
+  :root{--game-nav-width:94px;--game-hud-height:98px}
+  body.game-ui-v14 .app{padding-left:var(--game-nav-width)}
+  .game-side-nav-v14{
+    left:12px;top:12px;bottom:12px;width:70px;
+    padding:10px 7px;border-radius:25px;
+  }
+  .game-side-nav-v14 button{
+    appearance:none;-webkit-appearance:none;
+    width:55px;height:55px;padding:0;
+  }
+  body.game-ui-v14 .game-header{
+    left:calc(var(--game-nav-width) + 8px);
+    right:14px;top:12px;
+    height:76px;
+    grid-template-columns:minmax(190px,225px) minmax(390px,1fr) auto;
+    gap:16px;padding:10px 14px;
+  }
+  body.game-ui-v14 .brand-button{min-width:0;width:100%;justify-content:flex-start}
+  .game-hud-player-v14{
+    width:100%;min-width:0;
+    grid-template-columns:auto minmax(190px,1fr) auto auto;
+    gap:10px;padding:6px 8px;
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    background:rgba(255,255,255,.045);
+  }
+  .game-hud-identity-v14>div{
+    display:grid;grid-template-columns:1fr;align-items:start;
+    justify-content:start;gap:1px;margin-bottom:7px;
+  }
+  .game-hud-identity-v14 strong{font-size:14px;line-height:1.15}
+  .game-hud-identity-v14 small{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:8px;line-height:1.2;
+  }
+  body.game-ui-v14 .screen{
+    width:min(var(--game-content-width),calc(100% - 54px));
+    padding-top:30px;
+  }
+}
+
+/* Évite que les ressources écrasent le joueur sur les écrans moyens. */
+@media (min-width:901px) and (max-width:1280px){
+  body.game-ui-v14 .game-header{
+    grid-template-columns:165px minmax(310px,1fr) auto;
+  }
+  body.game-ui-v14 .brand-button .badge{display:none}
+  body.game-ui-v14 .brand-button h1{font-size:20px}
+  .game-hud-level-v14{display:none}
+  body.game-ui-v14 .top-resources>span{min-width:58px;padding:8px}
+}
+
+/* Profil réellement centré et utilisable. */
+.game-profile-overlay-v14{
+  align-items:center!important;
+  justify-items:center!important;
+  overflow:auto!important;
+}
+.game-profile-overlay-v14:not(.hidden){display:grid!important}
+.game-profile-drawer-v14{
+  margin:auto;
+  transform-origin:center;
+}
+.game-profile-grid-v14 button{
+  appearance:none;-webkit-appearance:none;
+  display:block;
+}
+
+/* ---------- Code Parents à 4 chiffres ---------- */
+.parent-pin-dots-v14{
+  display:flex;justify-content:center;gap:13px;
+  margin:20px 0 16px;
+}
+.parent-pin-dots-v14 span{
+  width:17px;height:17px;border:2px solid #9dacbf;border-radius:50%;
+  background:#fff;transition:.18s;
+}
+.parent-pin-dots-v14 span.filled{
+  border-color:#5269bd;background:#5269bd;
+  box-shadow:0 0 0 5px rgba(82,105,189,.11);
+}
+.parent-pin-message-v14{
+  min-height:22px;margin:0 0 10px;
+  color:#d45e60;font-size:12px;font-weight:900;
+}
+.parent-pin-keypad-v14{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
+  margin-top:12px;
+}
+.parent-pin-keypad-v14 button{
+  appearance:none;-webkit-appearance:none;
+  min-height:54px;border:0;border-radius:16px;
+  color:#2f3c59;background:#edf1f8;
+  font-size:19px;font-weight:950;cursor:pointer;
+  transition:transform .15s,background .15s;
+}
+.parent-pin-keypad-v14 button:hover{transform:translateY(-2px);background:#e3e9f8}
+.parent-pin-keypad-v14 .parent-pin-clear-v14{font-size:12px;color:#69768a}
+.parent-pin-keypad-v14 .parent-pin-validate-v14{
+  color:#fff;background:linear-gradient(135deg,#6077d2,#465cae);
+  font-size:12px;
+}
+.parent-pin-keypad-v14 .parent-pin-validate-v14:hover{background:linear-gradient(135deg,#6d84dc,#5065b9)}
+.parent-pin-forgot-v14{
+  width:100%;margin-top:9px;padding:10px;border:0;background:transparent;
+  color:#71809a;font-size:11px;font-weight:850;cursor:pointer;
+}
+.parent-pin-forgot-v14[hidden]{display:none!important}
+.parent-pin-change-v14{
+  margin-left:auto;padding:10px 13px;border:0;border-radius:13px;
+  background:#edf1ff;color:#5066ba;font-weight:900;cursor:pointer;
+}
+
+@media(max-width:900px){
+  .parent-gate-card-v14{width:min(420px,100%);padding:24px 20px}
+  .parent-pin-keypad-v14 button{min-height:51px}
+}

@@ -224,16 +224,24 @@
   };
 
   window.openGameProfileV14 = function(){
+    injectNavigation();
     const overlay = document.getElementById("gameProfileOverlayV14");
     const state = safeState();
     const title = document.getElementById("gameProfileTitleV14");
     if (title) title.textContent = state?.childName || "Champion";
-    overlay?.classList.remove("hidden");
+    if (!overlay) return;
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden","false");
+    document.body.classList.add("profile-open-v14");
     updateNavActive("profile");
+    requestAnimationFrame(() => overlay.querySelector(".game-profile-header-v14 button")?.focus());
   };
 
   window.closeGameProfileV14 = function(){
-    document.getElementById("gameProfileOverlayV14")?.classList.add("hidden");
+    const overlay = document.getElementById("gameProfileOverlayV14");
+    overlay?.classList.add("hidden");
+    overlay?.setAttribute("aria-hidden","true");
+    document.body.classList.remove("profile-open-v14");
     updateNavActive(screenRoute(currentScreenId));
   };
 
