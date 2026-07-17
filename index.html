@@ -4,16 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LumiKids</title>
-  <meta name="theme-color" content="#7edb9c">
+  <meta name="theme-color" content="#182440">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="LumiKids">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="icon" href="icon.png">
-  <link rel="stylesheet" href="style.css?v=mobile-audio-v2">
-  <link rel="stylesheet" href="style-maths.css?v=maths-addon-v5">
+  <link rel="stylesheet" href="style.css?v=game-ui-v14">
+  <link rel="stylesheet" href="style-maths.css?v=game-ui-v14">
 
-  <link rel="stylesheet" href="positions.css?v=mobile-audio-v2">
+  <link rel="stylesheet" href="positions.css?v=game-ui-v14">
 
   <style id="lumikids-settings-v1-2">
     .top-resources{
@@ -266,8 +266,11 @@
     }
   </style>
 
+  <link rel="stylesheet" href="style-game-ui.css?v=game-ui-v14">
+  <link rel="stylesheet" href="style-game-responsive.css?v=game-ui-v14">
+
 </head>
-<body>
+<body class="game-ui-v14">
   <div class="sky-decoration sky-one"></div>
   <div class="sky-decoration sky-two"></div>
 
@@ -305,7 +308,8 @@
             <p class="eyebrow">Bonjour <span id="childNameHome">Champion</span> !</p>
             <h2>Prêt à apprendre<br>en t’amusant ?</h2>
             <p>Choisis une activité, gagne des étoiles et progresse de niveau.</p>
-            <button class="continue-button" onclick="continueLearning()">Continuer <span>→</span></button>
+            <button id="continueLearningButtonV10" class="continue-button" onclick="continueLearning()">Continuer <span>→</span></button>
+            <p id="resumeHintV10" class="resume-hint-v10">Commence une activité pour retrouver ta progression ici.</p>
           </div>
           <div class="hero-mascot">
             <img src="images/interface/mascot.png" alt="">
@@ -371,6 +375,7 @@
             <strong id="dailyChallengeText">Réussis 5 exercices</strong>
             <div class="daily-track"><div id="dailyChallengeBar"></div></div>
             <span id="dailyChallengeStatus" class="daily-status">0/5</span>
+            <small id="dailyMilestoneV10" class="daily-milestone-v10">Série quotidienne : 0 jour</small>
           </div>
           <b id="dailyChallengeAction">En cours</b>
         </button>
@@ -607,6 +612,12 @@
           <div><p class="eyebrow">Ma collection</p><h2>Récompenses</h2></div>
         </div>
         <div class="wallet-v3"><div><small>Mon trésor</small><strong><span id="rewardsCoins">0</span> pièces</strong></div><span>⭐ <b id="rewardsStars">0</b></span></div>
+        <section id="rewardOverviewV10" class="reward-overview-v10">
+          <article><small>Succès débloqués</small><strong id="rewardUnlockedCountV10">0</strong></article>
+          <article><small>Sans-faute</small><strong id="rewardPerfectCountV10">0</strong></article>
+          <article><small>Erreurs corrigées</small><strong id="rewardCorrectedCountV10">0</strong></article>
+          <article><small>Série quotidienne</small><strong id="rewardDailyStreakV10">0 jour</strong></article>
+        </section>
         <div id="achievementsGrid" class="achievement-grid"></div>
       </div>
 
@@ -626,6 +637,17 @@
           <div class="mistake-summary-orb">↻</div>
         </section>
 
+        <div class="mistake-tools-v10">
+          <div class="mistake-filters-v10" role="tablist" aria-label="Filtrer les erreurs">
+            <button data-filter="all" class="active" onclick="setMistakeFilterV10('all')">Tout</button>
+            <button data-filter="letter" onclick="setMistakeFilterV10('letter')">Lettres</button>
+            <button data-filter="sound" onclick="setMistakeFilterV10('sound')">Sons</button>
+            <button data-filter="word" onclick="setMistakeFilterV10('word')">Mots</button>
+            <button data-filter="math" onclick="setMistakeFilterV10('math')">Calculs</button>
+          </div>
+          <button id="correctAllMistakesV10" class="correct-all-mistakes-v10" onclick="correctAllMistakesV10()">Corriger toute la liste</button>
+        </div>
+        <div id="mistakeRecoveryNoticeV10" class="mistake-recovery-notice-v10 hidden"></div>
         <div id="mistakeReviewContent" class="mistake-review-content"></div>
       </div>
 
@@ -685,6 +707,28 @@
           <span id="parentEncouragement">Continue comme ça !</span>
           <div class="accuracy-track"><div id="parentAccuracyBar"></div></div>
         </div>
+
+        <section class="parent-detail-grid-v10">
+          <article><span>⏱️</span><strong id="parentPlayTimeV10">0 min</strong><small>temps d’apprentissage</small></article>
+          <article><span>🎮</span><strong id="parentExercisesV10">0</strong><small>séries terminées</small></article>
+          <article><span>↻</span><strong id="parentCorrectedV10">0</strong><small>erreurs corrigées</small></article>
+          <article><span>ch</span><strong id="parentSoundsMasteredV10">0</strong><small>sons maîtrisés</small></article>
+        </section>
+
+        <section class="parent-section-v10">
+          <div class="parent-section-title-v10"><div><small>Conseils personnalisés</small><h3>À revoir en priorité</h3></div></div>
+          <div id="parentDifficultiesV10" class="parent-difficulties-v10"></div>
+        </section>
+
+        <section class="parent-section-v10">
+          <div class="parent-section-title-v10"><div><small>Historique récent</small><h3>Dernières activités</h3></div></div>
+          <div id="parentRecentActivitiesV10" class="parent-recent-v10"></div>
+        </section>
+
+        <section class="parent-section-v10">
+          <div class="parent-section-title-v10"><div><small>Aventure principale</small><h3>Progression des royaumes</h3></div></div>
+          <div id="parentKingdomProgressV10" class="parent-kingdoms-v10"></div>
+        </section>
       </div>
     </section>
       <!-- =========================================================
@@ -734,6 +778,54 @@
               <input id="effectsVolumeSlider" type="range" min="0" max="100" step="1" value="72" oninput="changeLumiVolume('effects', this.value)">
               <output id="effectsVolumeValue">72 %</output>
             </div>
+          </div>
+
+
+          <div class="lumi-settings-group">
+            <div class="lumi-setting-copy">
+              <strong>Voix et mots enregistrés</strong>
+              <span>Lecture des consignes, syllabes, mots et histoires.</span>
+            </div>
+            <div class="lumi-volume-row">
+              <span>🗣️</span>
+              <input id="voiceVolumeSliderV10" type="range" min="0" max="100" step="1" value="90" oninput="changeVoiceVolumeV10(this.value)">
+              <output id="voiceVolumeValueV10">90 %</output>
+            </div>
+          </div>
+
+          <div class="lumi-settings-group lumi-accessibility-v10">
+            <div class="lumi-setting-copy">
+              <strong>Taille des textes</strong>
+              <span>Adapte la lisibilité sans modifier les décors.</span>
+            </div>
+            <div class="text-size-buttons-v10">
+              <button data-scale="0.92" onclick="setTextScaleV10(0.92)">Petit</button>
+              <button data-scale="1" onclick="setTextScaleV10(1)">Normal</button>
+              <button data-scale="1.12" onclick="setTextScaleV10(1.12)">Grand</button>
+            </div>
+          </div>
+
+          <label class="lumi-switch-setting-v10">
+            <span><strong>Réduire les animations</strong><small>Limite les confettis et mouvements rapides.</small></span>
+            <input id="reducedMotionToggleV10" type="checkbox" onchange="toggleReducedMotionV10(this.checked)">
+            <i></i>
+          </label>
+
+          <label class="lumi-switch-setting-v10">
+            <span><strong>Lire automatiquement les consignes</strong><small>Les mots et consignes sont lus au début des exercices.</small></span>
+            <input id="autoReadToggleV10" type="checkbox" onchange="toggleAutoReadV10(this.checked)">
+            <i></i>
+          </label>
+
+          <label class="lumi-switch-setting-v10">
+            <span><strong>Confirmer avant de quitter un exercice</strong><small>Évite de perdre une série en cours par erreur.</small></span>
+            <input id="confirmExitToggleV10" type="checkbox" onchange="toggleConfirmExitV10(this.checked)">
+            <i></i>
+          </label>
+
+          <div class="lumi-settings-danger-v10">
+            <button onclick="clearAllMistakesV10()">Effacer uniquement les erreurs</button>
+            <button class="danger" onclick="resetAllProgressFromSettingsV10()">Réinitialiser toute la progression</button>
           </div>
 
           <button id="globalMusicToggle" class="lumi-wide-toggle" onclick="toggleAllBackgroundMusic()">
@@ -804,13 +896,6 @@
 
     <section id="storybookPages" class="storybook-pages" aria-label="Grand Livre des Étoiles">
       <img id="storybookPageBackground" class="storybook-page-background" src="images/livre/histoire_chap1.png" alt="Illustration de l’histoire">
-
-      <div class="storybook-mini-copy" aria-hidden="true">
-        <p class="storybook-mini-kicker">Le Grand Livre des Étoiles</p>
-        <h3 id="storybookMiniTitle"></h3>
-        <p id="storybookMiniStars" class="storybook-mini-stars"></p>
-        <div id="storybookMiniText" class="storybook-mini-text"></div>
-      </div>
 
       <div class="storybook-copy">
         <p class="storybook-kicker">Le Grand Livre des Étoiles</p>
@@ -907,13 +992,16 @@
 
   <div id="rewardAnimationLayer" class="reward-animation-layer"></div>
   <div id="toast" class="toast hidden"></div>
+  <div id="achievementToastV10" class="achievement-toast-v10 hidden" role="status" aria-live="polite"></div>
   <div id="confettiBox"></div>
 
-  <script src="script.js?v=mobile-audio-v2"></script>
-    <script src="script-maths.js?v=audio-v1"></script>
+  <script src="script.js?v=game-ui-v14"></script>
+    <script src="script-maths.js?v=game-ui-v14"></script>
+    <script src="script-navigation.js?v=game-ui-v14"></script>
+    <script src="script-game-ui.js?v=game-ui-v14"></script>
 <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=mobile-audio-v2");
+      navigator.serviceWorker.register("service-worker.js?v=game-ui-v14");
     }
   </script>
 

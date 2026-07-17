@@ -109,6 +109,7 @@ function loadGameState() {
 }
 
 function saveGameState() {
+  if (window.__lumikidsResetting === true) return;
   localStorage.setItem("lumikids-state", JSON.stringify(gameState));
 }
 
@@ -1805,6 +1806,7 @@ function playRecordedAudio(fileName, originalText, callback) {
   const soundBar = document.getElementById("soundBar");
   const audioPath = encodeURI("./son/" + fileName + ".mp3") + "?v=audio-fix-20260711";
   const audio = new Audio(audioPath);
+  audio.volume = Math.max(0, Math.min(1, Number(gameState.appSettingsV10?.voiceVolume ?? 0.9)));
 
   currentRecordedAudio = audio;
 
@@ -1861,6 +1863,7 @@ function speakWithBrowserVoice(text, callback) {
   phrase.lang = "fr-FR";
   phrase.rate = 0.75;
   phrase.pitch = 1.05;
+  phrase.volume = Math.max(0, Math.min(1, Number(gameState.appSettingsV10?.voiceVolume ?? 0.9)));
 
   const soundBar = document.getElementById("soundBar");
   const fakeDuration = Math.max(900, String(text).length * 280);
@@ -3559,16 +3562,48 @@ document.addEventListener("DOMContentLoaded", () => {
    REMISE À ZÉRO POUR LES BÊTA-TESTS
 ========================================================= */
 
+async function clearLumiKidsDataAndReload() {
+  window.__lumikidsResetting = true;
+  try { stopAllAudio(); } catch {}
+  try { window.LumiAudio?.stopBackground?.(true); } catch {}
+
+  /* L'accès administrateur reste actif : le bouton de bêta-test doit rester
+     disponible après la remise à zéro. Toutes les autres données LumiKids,
+     y compris les réglages audio, sont supprimées. */
+  const adminAccess = localStorage.getItem("lumikids-temp-admin-access");
+  localStorage.clear();
+  if (adminAccess === "granted") {
+    localStorage.setItem("lumikids-temp-admin-access", "granted");
+  }
+  try { sessionStorage.clear(); } catch {}
+
+  /* Supprime aussi les anciennes versions gardées par le service worker. */
+  try {
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.allSettled(names.map(name => caches.delete(name)));
+    }
+  } catch {}
+
+  /* Certains navigateurs sauvegardent encore les statistiques pendant
+     l'événement pagehide. Cette dernière sécurité efface de nouveau les
+     données juste avant de quitter la page. */
+  window.addEventListener("pagehide", () => {
+    localStorage.removeItem("lumikids-state");
+    localStorage.removeItem("lumikids-audio-settings-v1");
+  }, { once:true });
+
+  const cleanUrl = window.location.href.split("#")[0].split("?")[0];
+  window.location.replace(`${cleanUrl}?reset=${Date.now()}`);
+}
+window.clearLumiKidsDataAndReload = clearLumiKidsDataAndReload;
+
 function resetBetaProgress() {
   const confirmed = window.confirm(
-    "Réinitialiser toute la progression, les étoiles, les pièces et les statistiques ?"
+    "Réinitialiser toute la progression, les étoiles, les pièces, les erreurs et les statistiques ?"
   );
-
   if (!confirmed) return;
-
-  stopAllAudio();
-  localStorage.removeItem("lumikids-state");
-  window.location.reload();
+  clearLumiKidsDataAndReload();
 }
 
 
@@ -8468,7 +8503,19 @@ if (gameState.openedSecondChapterChests?.[5]) {
       });
     }
 
-    if (q.audio) setTimeout(() => speak(q.audio),180);
+    /* Lecture automatique cohérente : la consigne est lue dans tous les
+       exercices. Lorsqu'un mot ou une phrase doit être écouté, il est annoncé
+       juste après la consigne dans la même lecture afin d'éviter que deux voix
+       se coupent mutuellement. */
+    const autoReadEnabledV11 = gameState.appSettingsV10?.autoRead !== false;
+    if (autoReadEnabledV11) {
+      const spokenV11 = q.audio
+        ? `${q.prompt} ${q.audio}`
+        : q.prompt;
+      if (spokenV11) setTimeout(() => speak(spokenV11),220);
+    } else if (q.audio) {
+      setTimeout(() => speak(q.audio),220);
+    }
   }
 
   window.practiceSelectV9 = function(button,value){
@@ -8525,6 +8572,31 @@ if (gameState.openedSecondChapterChests?.[5]) {
     return normalizeTextV9(answer) === normalizeTextV9(expected);
   }
 
+  function rememberPracticeMistakeV11(question){
+    if (!question || typeof window.rememberMistake !== "function") return;
+    const expected = Array.isArray(question.answer)
+      ? question.answer.join(" ")
+      : String(question.answer ?? "");
+    const stableAnswer = normalizeTextV9(expected) || normalizeTextV9(question.display) || "question";
+
+    window.rememberMistake({
+      id: `practice:${practiceModeV9}:${practiceKeyV9}:${question.type}:${stableAnswer}`,
+      kind: "practice",
+      lessonType: practiceModeV9,
+      lessonKey: practiceKeyV9,
+      practiceType: question.type,
+      practiceTitle: question.title,
+      prompt: question.prompt,
+      display: question.display,
+      audio: question.audio || "",
+      answer: expected,
+      correct: expected,
+      choices: Array.isArray(question.choices) ? [...question.choices] : null,
+      tokens: Array.isArray(question.tokens) ? question.tokens.map(token => token.value) : null,
+      input: Boolean(question.input)
+    });
+  }
+
   window.validatePracticeV9 = function(){
     const msg = document.getElementById("practiceMessageV9");
     const answer = practiceAnswerV9();
@@ -8547,6 +8619,7 @@ if (gameState.openedSecondChapterChests?.[5]) {
         msg.className = "practice-message-v9 bad";
       }
       window.LumiAudio?.playWrong?.();
+      rememberPracticeMistakeV11(practiceQuestionV9);
       recordWrongAnswer();
       return;
     }
@@ -8656,4 +8729,2521 @@ if (gameState.openedSecondChapterChests?.[5]) {
   };
 
   updateGameUi();
+})();
+
+
+/* =========================================================
+   LUMIKIDS — GROSSE MISE À JOUR PROGRESSION V10
+   1. Parcours d'entraînement finalisé
+   2. Étoiles 2 + 2 + 2 synchronisées partout
+   3. Refaire mes erreurs enrichi
+   4. Tableau de bord Parents détaillé
+   5. Défis quotidiens et séries
+   6. Récompenses et nouveaux succès
+   7. Paramètres d'accessibilité et voix
+   8. Reprise intelligente
+   9. Résultats détaillés
+========================================================= */
+(function installLumiKidsProgressionV10(){
+  "use strict";
+
+  const VERSION = "11.0";
+  const PRACTICE_TYPES_V10 = [
+    ["hear","J’entends / je n’entends pas"],
+    ["intruder","Trouve l’intrus"],
+    ["position","Position du son"],
+    ["orderSyllables","Syllabes dans l’ordre"],
+    ["missingSyllable","Syllabe manquante"],
+    ["buildWord","Construis le mot"],
+    ["spelling","Bonne écriture"],
+    ["dictation","Petite dictée"],
+    ["orderSentence","Phrase dans l’ordre"],
+    ["missingWord","Mot manquant"],
+    ["chooseSentence","Bonne phrase"]
+  ];
+  const ALL_LETTERS_V10 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  const practiceContextV10 = {
+    mode: "letter",
+    key: "A",
+    type: "",
+    coinsAtStart: 0,
+    resultHandled: false
+  };
+  const historyContextV10 = {
+    type: "letter",
+    key: "A",
+    exercise: "exercise1",
+    correct: 0,
+    errors: 0,
+    coinsAtStart: 0,
+    resultHandled: false
+  };
+  let mistakeFilterV10 = "all";
+  let mathMistakeOperationFilterV12 = "all";
+  let activeMistakeV10 = null;
+  let selectedMistakeV10 = "";
+  let selectedMistakeTokensV10 = [];
+  let correctionQueueV10 = false;
+  let previousVisitV10 = 0;
+
+  function now(){ return Date.now(); }
+  function escapeV10(value){
+    return String(value ?? "")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+  function encV10(value){ return encodeURIComponent(String(value ?? "")); }
+  function normalizeV10(value){
+    return String(value ?? "")
+      .toLocaleLowerCase("fr")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[’']/g," ")
+      .replace(/[^a-z0-9]+/g," ")
+      .trim();
+  }
+  function dayKeyV10(date = new Date()){
+    return [date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");
+  }
+  function yesterdayKeyV10(){
+    const date = new Date();
+    date.setDate(date.getDate()-1);
+    return dayKeyV10(date);
+  }
+  function formatDurationV10(seconds){
+    const total = Math.max(0,Math.round(Number(seconds)||0));
+    if (total < 60) return `${total} s`;
+    const minutes = Math.floor(total/60);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes/60);
+    const rest = minutes%60;
+    return rest ? `${hours} h ${rest} min` : `${hours} h`;
+  }
+  function safeSaveV10(){
+    try { saveGameState(); } catch {}
+  }
+
+  function ensureV10State(){
+    if (!gameState.analyticsV10) {
+      gameState.analyticsV10 = {
+        version: VERSION,
+        sessions: 0,
+        sessionSeconds: 0,
+        exercisesCompleted: 0,
+        historyCompleted: 0,
+        practiceCompleted: 0,
+        perfectExercises: 0,
+        lastVisit: 0,
+        activityLog: []
+      };
+    }
+    const analytics = gameState.analyticsV10;
+    if (!Array.isArray(analytics.activityLog)) analytics.activityLog = [];
+    ["sessions","sessionSeconds","exercisesCompleted","historyCompleted","practiceCompleted","perfectExercises"]
+      .forEach(key => analytics[key] = Number(analytics[key] || 0));
+
+    if (!gameState.practiceStatsV10) gameState.practiceStatsV10 = {};
+    if (!gameState.appSettingsV10) {
+      gameState.appSettingsV10 = {
+        voiceVolume: .9,
+        textScale: 1,
+        reducedMotion: false,
+        autoRead: true,
+        confirmExit: true
+      };
+    }
+    gameState.appSettingsV10.voiceVolume = Math.max(0,Math.min(1,Number(gameState.appSettingsV10.voiceVolume ?? .9)));
+    gameState.appSettingsV10.textScale = [0.92,1,1.12].includes(Number(gameState.appSettingsV10.textScale))
+      ? Number(gameState.appSettingsV10.textScale) : 1;
+    gameState.appSettingsV10.reducedMotion = Boolean(gameState.appSettingsV10.reducedMotion);
+    gameState.appSettingsV10.autoRead = gameState.appSettingsV10.autoRead !== false;
+    gameState.appSettingsV10.confirmExit = gameState.appSettingsV10.confirmExit !== false;
+
+    if (!gameState.dailyStreakV10) {
+      gameState.dailyStreakV10 = { count:0, lastClaimDate:"", milestones:{} };
+    }
+    if (!gameState.dailyStreakV10.milestones) gameState.dailyStreakV10.milestones = {};
+    if (!gameState.achievementNotifiedV10) gameState.achievementNotifiedV10 = {};
+    if (!gameState.resumeV10) gameState.resumeV10 = null;
+    if (!gameState.mistakes) gameState.mistakes = {};
+    if (!gameState.achievements) gameState.achievements = {};
+    if (!Number.isFinite(Number(gameState.mistakesRecovered))) gameState.mistakesRecovered = 0;
+  }
+
+  previousVisitV10 = Number(gameState.analyticsV10?.lastVisit || 0);
+  ensureV10State();
+  gameState.analyticsV10.sessions += 1;
+  gameState.analyticsV10.lastVisit = now();
+  safeSaveV10();
+
+  function logActivityV10(kind,title,detail,meta = {}){
+    ensureV10State();
+    gameState.analyticsV10.activityLog.unshift({
+      id:`${now()}-${Math.random().toString(36).slice(2,7)}`,
+      kind,
+      title,
+      detail,
+      at:now(),
+      ...meta
+    });
+    gameState.analyticsV10.activityLog = gameState.analyticsV10.activityLog.slice(0,30);
+    safeSaveV10();
+  }
+
+  function setResumeV10(data){
+    ensureV10State();
+    gameState.resumeV10 = data ? {...data,updatedAt:now()} : null;
+    safeSaveV10();
+    updateResumeUiV10();
+  }
+
+  function resumeLabelV10(resume){
+    if (!resume) return "Commence une activité pour retrouver ta progression ici.";
+    if (resume.kind === "practice") {
+      const label = resume.mode === "sound" ? `son ${resume.key}` : `lettre ${resume.key}`;
+      const exercise = PRACTICE_TYPES_V10.find(item => item[0] === resume.exercise)?.[1] || "entraînement";
+      return `Reprendre : ${label} · ${exercise}`;
+    }
+    if (resume.kind === "history") {
+      const label = resume.type === "sound" ? `Son ${resume.key}` : `Lettre ${resume.key}`;
+      const step = resume.part?.startsWith("exercise") ? ` · exercice ${resume.part.replace("exercise","")}` : "";
+      return `Reprendre l’aventure : ${label}${step}`;
+    }
+    if (resume.kind === "math") {
+      const labels = {
+        addition:"les additions",
+        subtraction:"les soustractions",
+        comparison:"les comparaisons",
+        problem:"les petits problèmes",
+        mixed:"les calculs mélangés"
+      };
+      return `Reprendre ${labels[resume.operation] || "les maths"}${resume.inGame ? " · partie en cours" : ""}`;
+    }
+    return "Continuer là où tu t’es arrêté";
+  }
+
+  function updateResumeUiV10(){
+    const resume = gameState.resumeV10;
+    const hint = document.getElementById("resumeHintV10");
+    const button = document.getElementById("continueLearningButtonV10");
+    if (hint) hint.textContent = resumeLabelV10(resume);
+    if (button) {
+      const text = resume ? "Reprendre" : "Continuer";
+      button.innerHTML = `${text} <span>→</span>`;
+    }
+  }
+
+  /* ---------------------------------------------------------
+     TEMPS D'APPRENTISSAGE
+  --------------------------------------------------------- */
+  let sessionTickV10 = now();
+  function commitSessionTimeV10(){
+    if (document.visibilityState !== "visible") {
+      sessionTickV10 = now();
+      return;
+    }
+    const elapsed = Math.min(60,Math.max(0,(now()-sessionTickV10)/1000));
+    sessionTickV10 = now();
+    if (elapsed >= 1) {
+      gameState.analyticsV10.sessionSeconds += Math.round(elapsed);
+      gameState.analyticsV10.lastVisit = now();
+      safeSaveV10();
+    }
+  }
+  setInterval(commitSessionTimeV10,30000);
+  document.addEventListener("visibilitychange",() => {
+    commitSessionTimeV10();
+    if (document.visibilityState === "visible") sessionTickV10 = now();
+  });
+  window.addEventListener("pagehide",commitSessionTimeV10);
+
+  /* ---------------------------------------------------------
+     PARAMÈTRES ET ACCESSIBILITÉ
+  --------------------------------------------------------- */
+  function applyAppSettingsV10(){
+    const settings = gameState.appSettingsV10;
+    document.documentElement.style.setProperty("--v10-text-scale",String(settings.textScale));
+    document.body.classList.toggle("v10-reduced-motion",settings.reducedMotion);
+    document.body.dataset.v10TextSize = String(settings.textScale).replace(".","-");
+
+    const voice = document.getElementById("voiceVolumeSliderV10");
+    const voiceValue = document.getElementById("voiceVolumeValueV10");
+    if (voice) voice.value = Math.round(settings.voiceVolume*100);
+    if (voiceValue) voiceValue.textContent = `${Math.round(settings.voiceVolume*100)} %`;
+    const reduced = document.getElementById("reducedMotionToggleV10");
+    const autoRead = document.getElementById("autoReadToggleV10");
+    const confirmExit = document.getElementById("confirmExitToggleV10");
+    if (reduced) reduced.checked = settings.reducedMotion;
+    if (autoRead) autoRead.checked = settings.autoRead;
+    if (confirmExit) confirmExit.checked = settings.confirmExit;
+    document.querySelectorAll(".text-size-buttons-v10 button").forEach(button => {
+      button.classList.toggle("active",Number(button.dataset.scale) === Number(settings.textScale));
+    });
+  }
+
+  window.changeVoiceVolumeV10 = function(value){
+    gameState.appSettingsV10.voiceVolume = Math.max(0,Math.min(1,Number(value)/100));
+    safeSaveV10();
+    applyAppSettingsV10();
+  };
+  window.setTextScaleV10 = function(value){
+    gameState.appSettingsV10.textScale = [0.92,1,1.12].includes(Number(value)) ? Number(value) : 1;
+    safeSaveV10();
+    applyAppSettingsV10();
+  };
+  window.toggleReducedMotionV10 = function(value){
+    gameState.appSettingsV10.reducedMotion = Boolean(value);
+    safeSaveV10();
+    applyAppSettingsV10();
+  };
+  window.toggleAutoReadV10 = function(value){
+    gameState.appSettingsV10.autoRead = Boolean(value);
+    safeSaveV10();
+  };
+  window.toggleConfirmExitV10 = function(value){
+    gameState.appSettingsV10.confirmExit = Boolean(value);
+    safeSaveV10();
+  };
+  window.clearAllMistakesV10 = function(){
+    const count = Object.keys(gameState.mistakes || {}).length;
+    if (!count) return showToast("Il n’y a aucune erreur à effacer.");
+    if (!confirm(`Effacer les ${count} erreur${count>1?"s":""} enregistrée${count>1?"s":""} ?`)) return;
+    gameState.mistakes = {};
+    safeSaveV10();
+    refreshMistakeCountsV10();
+    if (!document.getElementById("mistakeReviewScreen")?.classList.contains("hidden")) renderMistakeListV10();
+    showToast("Les erreurs ont été effacées.");
+  };
+  window.resetAllProgressFromSettingsV10 = function(){
+    if (!confirm("Réinitialiser toute la progression, les étoiles, les pièces, les erreurs et les statistiques ?")) return;
+    return window.clearLumiKidsDataAndReload?.();
+  };
+
+  const previousOpenSettingsV10 = window.openSettingsPanel;
+  if (typeof previousOpenSettingsV10 === "function") {
+    window.openSettingsPanel = function(...args){
+      const result = previousOpenSettingsV10.apply(this,args);
+      applyAppSettingsV10();
+      return result;
+    };
+  }
+  applyAppSettingsV10();
+
+  function activeExerciseVisibleV10(){
+    const lessonVisible = !document.getElementById("lessonScreen")?.classList.contains("hidden");
+    const practiceVisible = !document.getElementById("practiceLessonPanelV9")?.classList.contains("hidden");
+    return Boolean(
+      (lessonVisible && document.querySelector("#lessonContent .exercise-layout, #lessonContent .match-exercise, #lessonContent .practice-stage-v9, #lessonContent .history-missing-word-v9")) ||
+      (practiceVisible && document.querySelector("#practiceLessonContentV9 .practice-stage-v9"))
+    );
+  }
+  function mayLeaveExerciseV10(){
+    if (!gameState.appSettingsV10.confirmExit || !activeExerciseVisibleV10()) return true;
+    return confirm("Quitter cet exercice en cours ? La question actuelle devra être recommencée.");
+  }
+
+  const oldBackToLessonListV10 = window.backToLessonList;
+  if (typeof oldBackToLessonListV10 === "function") {
+    window.backToLessonList = function(...args){
+      if (!mayLeaveExerciseV10()) return;
+      return oldBackToLessonListV10.apply(this,args);
+    };
+  }
+  const oldClosePracticeLessonV10 = window.closePracticeLessonV9;
+  if (typeof oldClosePracticeLessonV10 === "function") {
+    window.closePracticeLessonV9 = function(...args){
+      if (!mayLeaveExerciseV10()) return;
+      return oldClosePracticeLessonV10.apply(this,args);
+    };
+  }
+
+  /* ---------------------------------------------------------
+     DÉFIS QUOTIDIENS ET SÉRIES
+  --------------------------------------------------------- */
+  const DAILY_VARIANTS_V10 = [
+    {kind:"exercise",target:3,text:"Termine 3 séries d’exercices",reward:12},
+    {kind:"perfect",target:2,text:"Réussis 2 séries sans faute",reward:16},
+    {kind:"practice",target:3,text:"Réussis 3 exercices complémentaires",reward:12},
+    {kind:"mistake",target:2,text:"Corrige 2 erreurs enregistrées",reward:18}
+  ];
+
+  function ensureDailyChallengeV10(){
+    ensureV10State();
+    const today = dayKeyV10();
+    if (!gameState.dailyChallenge || gameState.dailyChallenge.date !== today || gameState.dailyChallenge.version !== VERSION) {
+      let variants = [...DAILY_VARIANTS_V10];
+      if (!Object.keys(gameState.mistakes || {}).length) variants = variants.filter(item => item.kind !== "mistake");
+      const hash = today.split("-").join("").split("").reduce((sum,n) => sum+Number(n),0);
+      const chosen = variants[hash % variants.length];
+      gameState.dailyChallenge = {
+        version:VERSION,
+        date:today,
+        kind:chosen.kind,
+        progress:0,
+        target:chosen.target,
+        text:chosen.text,
+        rewardType:"coins",
+        rewardAmount:chosen.reward,
+        completed:false,
+        claimed:false
+      };
+      safeSaveV10();
+    }
+    gameState.dailyChallenge.progress = Math.max(0,Math.min(
+      Number(gameState.dailyChallenge.progress||0),
+      Number(gameState.dailyChallenge.target||1)
+    ));
+    gameState.dailyChallenge.completed = gameState.dailyChallenge.progress >= gameState.dailyChallenge.target;
+    return gameState.dailyChallenge;
+  }
+
+  function advanceDailyV10(kind,amount=1){
+    const challenge = ensureDailyChallengeV10();
+    if (challenge.claimed || challenge.kind !== kind) return;
+    challenge.progress = Math.min(challenge.target,challenge.progress + Math.max(0,Number(amount)||0));
+    challenge.completed = challenge.progress >= challenge.target;
+    safeSaveV10();
+    renderDailyChallenge();
+    if (challenge.completed) showToast("Défi du jour terminé ! La récompense est disponible.");
+  }
+
+  ensureDailyChallenge = ensureDailyChallengeV10;
+  incrementDailyChallenge = function(){ /* Les anciennes réponses unitaires ne comptent plus comme une série. */ };
+  renderDailyChallenge = function(){
+    const challenge = ensureDailyChallengeV10();
+    const card = document.getElementById("dailyChallengeCard");
+    const badge = document.getElementById("dailyRewardBadge");
+    const status = document.getElementById("dailyChallengeStatus");
+    const action = document.getElementById("dailyChallengeAction");
+    const label = document.getElementById("dailyChallengeText");
+    const milestone = document.getElementById("dailyMilestoneV10");
+    setWidth("dailyChallengeBar",challenge.target ? challenge.progress/challenge.target*100 : 0);
+    if (label) label.textContent = challenge.text;
+    if (badge) badge.textContent = challenge.claimed ? "✓" : `🪙 ${challenge.rewardAmount}`;
+    if (status) status.textContent = challenge.claimed ? "Récompense récupérée" : `${challenge.progress}/${challenge.target}`;
+    if (action) action.textContent = challenge.claimed ? "Récupéré" : challenge.completed ? "Récupérer" : "En cours";
+    if (milestone) {
+      const count = Number(gameState.dailyStreakV10.count||0);
+      const next = [3,7,14].find(value => value>count) || 14;
+      milestone.textContent = `Série : ${count} jour${count>1?"s":""} · prochain bonus à ${next} jours`;
+    }
+    card?.classList.toggle("claimable",challenge.completed && !challenge.claimed);
+    card?.classList.toggle("claimed",challenge.claimed);
+  };
+
+  claimDailyChallenge = function(){
+    const challenge = ensureDailyChallengeV10();
+    if (!challenge.completed || challenge.claimed) return;
+    challenge.claimed = true;
+    gameState.coins = Number(gameState.coins||0) + Number(challenge.rewardAmount||0);
+
+    const streak = gameState.dailyStreakV10;
+    const today = dayKeyV10();
+    if (streak.lastClaimDate === yesterdayKeyV10()) streak.count = Number(streak.count||0)+1;
+    else if (streak.lastClaimDate !== today) streak.count = 1;
+    streak.lastClaimDate = today;
+
+    let bonus = 0;
+    const milestoneRewards = {3:15,7:35,14:80};
+    if (milestoneRewards[streak.count] && !streak.milestones[streak.count]) {
+      bonus = milestoneRewards[streak.count];
+      streak.milestones[streak.count] = true;
+      gameState.coins += bonus;
+    }
+
+    logActivityV10("daily","Défi quotidien terminé",`${challenge.text} · +${challenge.rewardAmount + bonus} pièces`);
+    safeSaveV10();
+    updateGameUi();
+    animateRewardToCounter("coins",challenge.rewardAmount+bonus);
+    showToast(bonus
+      ? `Défi récupéré ! Bonus de série : +${bonus} pièces.`
+      : `Défi récupéré : +${challenge.rewardAmount} pièces.`);
+    checkAchievementsV10(true);
+  };
+
+  /* ---------------------------------------------------------
+     PARCOURS D'ENTRAÎNEMENT : PROGRESSION ET REPRISE
+  --------------------------------------------------------- */
+  function practiceKeyIdV10(mode,key){ return `${mode}:${key}`; }
+  function practiceStatsV10(mode,key){
+    ensureV10State();
+    const id = practiceKeyIdV10(mode,key);
+    if (!gameState.practiceStatsV10[id]) {
+      gameState.practiceStatsV10[id] = {
+        completedTypes:{},
+        totalCompleted:0,
+        bestScore:0,
+        totalErrors:0,
+        lastExercise:"",
+        lastPlayedAt:0
+      };
+    }
+    return gameState.practiceStatsV10[id];
+  }
+  function completedPracticeTypesV10(mode,key){
+    return Object.keys(practiceStatsV10(mode,key).completedTypes || {}).length;
+  }
+  function currentPracticeModeFromDomV10(){
+    return document.getElementById("practiceSoundsTabV9")?.classList.contains("active") ? "sound" : "letter";
+  }
+
+  function decoratePracticeChooserV10(){
+    const mode = currentPracticeModeFromDomV10();
+    practiceContextV10.mode = mode;
+    const keys = mode === "letter" ? ALL_LETTERS_V10 : [...soundKeys];
+    const grid = document.getElementById("practiceLessonsGridV9");
+    if (!grid) return;
+
+    let summary = document.getElementById("practiceSummaryV10");
+    if (!summary) {
+      summary = document.createElement("section");
+      summary.id = "practiceSummaryV10";
+      summary.className = "practice-summary-v10";
+      document.querySelector("#practiceChooserV9 .practice-intro-v9")?.after(summary);
+    }
+    const mastered = keys.filter(key => completedPracticeTypesV10(mode,key) === PRACTICE_TYPES_V10.length).length;
+    const totalDone = keys.reduce((sum,key) => sum + completedPracticeTypesV10(mode,key),0);
+    const resume = gameState.resumeV10?.kind === "practice" && gameState.resumeV10.mode === mode
+      ? gameState.resumeV10 : null;
+    summary.innerHTML = `
+      <div><small>Progression du parcours</small><strong>${mastered} leçon${mastered>1?"s":""} maîtrisée${mastered>1?"s":""}</strong><span>${totalDone} activité${totalDone>1?"s":""} découverte${totalDone>1?"s":""}</span></div>
+      <div class="practice-summary-track-v10"><i style="width:${keys.length ? mastered/keys.length*100 : 0}%"></i></div>
+      ${resume ? `<button onclick="resumePracticeV10()">Reprendre ${escapeV10(resume.mode === "sound" ? `le son ${resume.key}` : `la lettre ${resume.key}`)} →</button>` : ""}`;
+
+    [...grid.querySelectorAll(".practice-letter-card-v9")].forEach((card,index) => {
+      const key = keys[index];
+      if (!key) return;
+      const stats = practiceStatsV10(mode,key);
+      const done = completedPracticeTypesV10(mode,key);
+      const status = done === PRACTICE_TYPES_V10.length ? "Maîtrisé" : done ? "En cours" : "À commencer";
+      card.classList.toggle("v10-mastered",done === PRACTICE_TYPES_V10.length);
+      card.classList.toggle("v10-started",done>0 && done<PRACTICE_TYPES_V10.length);
+      card.querySelector(".practice-card-details-v10")?.remove();
+      const detail = document.createElement("span");
+      detail.className = "practice-card-details-v10";
+      detail.innerHTML = `<b>${status}</b><em>${done}/${PRACTICE_TYPES_V10.length}</em><i><u style="width:${done/PRACTICE_TYPES_V10.length*100}%"></u></i>${stats.bestScore ? `<small>Meilleur : ${stats.bestScore}%</small>` : ""}`;
+      card.appendChild(detail);
+    });
+  }
+
+  function decoratePracticeLessonV10(){
+    const content = document.getElementById("practiceLessonContentV9");
+    if (!content || !content.querySelector(".practice-course-v9")) return;
+    const stats = practiceStatsV10(practiceContextV10.mode,practiceContextV10.key);
+    const done = completedPracticeTypesV10(practiceContextV10.mode,practiceContextV10.key);
+    let panel = content.querySelector(".practice-lesson-progress-v10");
+    if (!panel) {
+      panel = document.createElement("section");
+      panel.className = "practice-lesson-progress-v10";
+      content.querySelector(".practice-course-v9")?.after(panel);
+    }
+    panel.innerHTML = `
+      <div><small>Progression de cette leçon</small><strong>${done} / ${PRACTICE_TYPES_V10.length} activités</strong><span>${done === PRACTICE_TYPES_V10.length ? "Toutes les activités sont maîtrisées." : "Avance à ton rythme et améliore tes scores."}</span></div>
+      <div class="practice-lesson-actions-v10">
+        <button onclick="continuePracticeSeriesV10()">Continuer la série</button>
+        <button class="secondary" onclick="restartPracticeSeriesV10()">Recommencer</button>
+      </div>`;
+
+    [...content.querySelectorAll(".practice-exercise-card-v9")].forEach((card,index) => {
+      const type = PRACTICE_TYPES_V10[index]?.[0];
+      if (!type) return;
+      const result = stats.completedTypes?.[type];
+      card.classList.toggle("completed-v10",Boolean(result));
+      card.querySelector(".practice-exercise-status-v10")?.remove();
+      const badge = document.createElement("span");
+      badge.className = "practice-exercise-status-v10";
+      badge.textContent = result ? `✓ ${result.bestScore}%` : "À faire";
+      card.appendChild(badge);
+    });
+  }
+
+  window.continuePracticeSeriesV10 = function(){
+    const stats = practiceStatsV10(practiceContextV10.mode,practiceContextV10.key);
+    const last = gameState.resumeV10?.kind === "practice" &&
+      gameState.resumeV10.mode === practiceContextV10.mode &&
+      gameState.resumeV10.key === practiceContextV10.key
+        ? gameState.resumeV10.exercise : stats.lastExercise;
+    const type = last || PRACTICE_TYPES_V10.find(item => !stats.completedTypes?.[item[0]])?.[0] || PRACTICE_TYPES_V10[0][0];
+    startPracticeExerciseV9(type);
+  };
+  window.restartPracticeSeriesV10 = function(){
+    if (!confirm("Recommencer la progression complémentaire de cette lettre ou de ce son ?")) return;
+    gameState.practiceStatsV10[practiceKeyIdV10(practiceContextV10.mode,practiceContextV10.key)] = {
+      completedTypes:{},totalCompleted:0,bestScore:0,totalErrors:0,lastExercise:"",lastPlayedAt:0
+    };
+    safeSaveV10();
+    renderPracticeLessonV9();
+    setTimeout(decoratePracticeLessonV10,0);
+  };
+  window.resumePracticeV10 = function(){
+    const resume = gameState.resumeV10;
+    if (!resume || resume.kind !== "practice") return showReadingExercisesHome("letter");
+    showReadingExercisesHome(resume.mode);
+    setTimeout(() => {
+      openPracticeLessonV9(resume.mode,resume.key);
+      setTimeout(() => resume.exercise && startPracticeExerciseV9(resume.exercise),40);
+    },40);
+  };
+
+  function wrapV10(name,before,after){
+    const original = window[name];
+    if (typeof original !== "function" || original.__v10Wrapped) return;
+    const wrapped = function(...args){
+      let beforeResult;
+      if (before) beforeResult = before.apply(this,args);
+      if (beforeResult === false) return;
+      const result = original.apply(this,args);
+      if (after) after.call(this,result,args);
+      return result;
+    };
+    wrapped.__v10Wrapped = true;
+    wrapped.__v10Original = original;
+    window[name] = wrapped;
+  }
+
+  wrapV10("showReadingExercisesHome",null,() => setTimeout(decoratePracticeChooserV10,0));
+  wrapV10("setPracticeModeV9",function(mode){ practiceContextV10.mode = mode === "sound" ? "sound" : "letter"; },() => setTimeout(decoratePracticeChooserV10,0));
+  wrapV10("openPracticeLessonV9",function(mode,key){
+    practiceContextV10.mode = mode === "sound" ? "sound" : "letter";
+    practiceContextV10.key = key;
+  },() => setTimeout(decoratePracticeLessonV10,0));
+  wrapV10("renderPracticeLessonV9",null,() => setTimeout(decoratePracticeLessonV10,0));
+  wrapV10("closePracticeLessonV9",null,() => setTimeout(decoratePracticeChooserV10,0));
+  wrapV10("startPracticeExerciseV9",function(type){
+    practiceContextV10.type = type;
+    practiceContextV10.coinsAtStart = Number(gameState.coins||0);
+    practiceContextV10.resultHandled = false;
+    const stats = practiceStatsV10(practiceContextV10.mode,practiceContextV10.key);
+    stats.lastExercise = type;
+    stats.lastPlayedAt = now();
+    setResumeV10({kind:"practice",mode:practiceContextV10.mode,key:practiceContextV10.key,exercise:type});
+    safeSaveV10();
+  },null);
+
+  function finalizePracticeResultV10(){
+    const result = document.querySelector("#practiceLessonContentV9 .practice-result-v9");
+    if (!result || result.dataset.v10Detailed === "true" || practiceContextV10.resultHandled) return;
+    result.dataset.v10Detailed = "true";
+    practiceContextV10.resultHandled = true;
+    const text = result.textContent || "";
+    const match = text.match(/après\s+(\d+)\s+erreur/i);
+    const errors = match ? Number(match[1]) : 0;
+    const score = Math.max(20,100-errors*20);
+    const stats = practiceStatsV10(practiceContextV10.mode,practiceContextV10.key);
+    const old = stats.completedTypes?.[practiceContextV10.type];
+    stats.completedTypes[practiceContextV10.type] = {
+      attempts:Number(old?.attempts||0)+1,
+      bestErrors:old ? Math.min(Number(old.bestErrors??999),errors) : errors,
+      bestScore:Math.max(Number(old?.bestScore||0),score),
+      lastErrors:errors,
+      completedAt:now()
+    };
+    stats.totalCompleted += 1;
+    stats.totalErrors += errors;
+    stats.bestScore = Math.max(Number(stats.bestScore||0),score);
+    stats.lastExercise = practiceContextV10.type;
+    stats.lastPlayedAt = now();
+
+    gameState.analyticsV10.exercisesCompleted += 1;
+    gameState.analyticsV10.practiceCompleted += 1;
+    if (errors === 0) gameState.analyticsV10.perfectExercises += 1;
+    const label = practiceContextV10.mode === "sound" ? `Son ${practiceContextV10.key}` : `Lettre ${practiceContextV10.key}`;
+    const exerciseLabel = PRACTICE_TYPES_V10.find(item => item[0] === practiceContextV10.type)?.[1] || "Exercice";
+    logActivityV10("practice",`${label} · ${exerciseLabel}`,`${score}% · ${errors} erreur${errors>1?"s":""}`);
+    advanceDailyV10("exercise",1);
+    advanceDailyV10("practice",1);
+    if (errors === 0) advanceDailyV10("perfect",1);
+    safeSaveV10();
+
+    const detailed = document.createElement("div");
+    detailed.className = "result-details-v10";
+    detailed.innerHTML = `
+      <article><small>Résultat</small><strong>${score}%</strong></article>
+      <article><small>Erreurs</small><strong>${errors}</strong></article>
+      <article><small>XP</small><strong>+5</strong></article>
+      <article><small>Pièces</small><strong>+1</strong></article>`;
+    result.querySelector(".practice-actions-v9")?.before(detailed);
+    checkAchievementsV10(true);
+    renderRewardsOverviewV10();
+  }
+
+  wrapV10("validatePracticeV9",null,() => setTimeout(finalizePracticeResultV10,0));
+  wrapV10("nextPracticeQuestionV9",function(){ practiceContextV10.resultHandled = false; },null);
+
+  /* ---------------------------------------------------------
+     RÉSULTATS DÉTAILLÉS DU PARCOURS HISTOIRE
+  --------------------------------------------------------- */
+  function startHistoryContextV10(exercise){
+    historyContextV10.type = currentLesson?.type || "letter";
+    historyContextV10.key = currentLesson?.key || "A";
+    historyContextV10.exercise = exercise;
+    historyContextV10.correct = 0;
+    historyContextV10.errors = 0;
+    historyContextV10.coinsAtStart = Number(gameState.coins||0);
+    historyContextV10.resultHandled = false;
+    setResumeV10({kind:"history",type:historyContextV10.type,key:historyContextV10.key,part:exercise});
+  }
+  function countHistoryValidationV10(messageId){
+    const message = document.getElementById(messageId);
+    if (!message) return;
+    if (message.classList.contains("good")) historyContextV10.correct += 1;
+    if (message.classList.contains("bad") && /essaie encore/i.test(message.textContent||"")) historyContextV10.errors += 1;
+  }
+
+  wrapV10("startGuidedExerciseOne",function(){ startHistoryContextV10("exercise1"); });
+  wrapV10("showMatchExercise",function(){ startHistoryContextV10("exercise2"); });
+  wrapV10("showSoundSpellingExerciseV9",function(){ startHistoryContextV10("exercise2"); });
+  wrapV10("showHistoryMissingLetterExerciseV9",function(){ startHistoryContextV10("exercise3"); });
+  wrapV10("validateGuidedExerciseOne",null,() => countHistoryValidationV10("exerciseMessage"));
+  wrapV10("validateGuidedMatch",null,() => countHistoryValidationV10("matchMessage"));
+  wrapV10("validateSoundSpellingV9",null,() => countHistoryValidationV10("soundSpellingMessageV9"));
+
+  const originalValidateMissingV10 = window.validateHistoryMissingV9;
+  if (typeof originalValidateMissingV10 === "function") {
+    window.validateHistoryMissingV9 = function(...args){
+      const selected = document.querySelector("#lessonContent .history-choice-grid-v9 .practice-choice-v9.selected")?.textContent?.trim() || "";
+      const audioButton = document.querySelector("#lessonContent .practice-prompt-v9 .practice-audio-v9");
+      const onclick = audioButton?.getAttribute("onclick") || "";
+      const encoded = onclick.match(/decodeURIComponent\('([^']+)'\)/)?.[1] || "";
+      let word = "";
+      try { word = decodeURIComponent(encoded); } catch { word = ""; }
+      const result = originalValidateMissingV10.apply(this,args);
+      countHistoryValidationV10("historyMissingMessageV9");
+      const message = document.getElementById("historyMissingMessageV9");
+      if (selected && message?.classList.contains("bad") && /essaie encore/i.test(message.textContent||"")) {
+        window.rememberMistake?.({
+          kind:"missing",
+          lessonType:currentLesson.type,
+          lessonKey:currentLesson.key,
+          exerciseName:"exercise3",
+          answer:String(currentLesson.key).toUpperCase(),
+          word:word || currentLesson.words?.[0]?.word || "",
+          audio:word || currentLesson.key
+        });
+      }
+      return result;
+    };
+  }
+
+  function lessonMistakesV10(type,key){
+    return Object.values(gameState.mistakes||{}).filter(m => m.lessonType === type && m.lessonKey === key);
+  }
+
+  function decorateHistoryResultV10(){
+    const panel = document.querySelector("#lessonContent .completion-panel");
+    if (!panel || panel.dataset.v10Detailed === "true" || historyContextV10.resultHandled) return;
+    panel.dataset.v10Detailed = "true";
+    historyContextV10.resultHandled = true;
+    const scoreText = panel.querySelector(".history-result-score-v9")?.textContent || panel.textContent || "";
+    const score = Number(scoreText.match(/Résultat\s*:\s*(\d+)/i)?.[1] || 0);
+    const errors = Math.max(0,historyContextV10.errors);
+    const correct = Math.max(0,historyContextV10.correct);
+    const coins = Math.max(0,Number(gameState.coins||0)-historyContextV10.coinsAtStart);
+    const review = lessonMistakesV10(historyContextV10.type,historyContextV10.key);
+
+    const details = document.createElement("section");
+    details.className = "history-result-details-v10";
+    details.innerHTML = `
+      <div class="result-details-v10">
+        <article><small>Bonnes réponses</small><strong>${correct}</strong></article>
+        <article><small>Erreurs</small><strong>${errors}</strong></article>
+        <article><small>Étoiles</small><strong>${score}/2</strong></article>
+        <article><small>Pièces</small><strong>+${coins}</strong></article>
+      </div>
+      ${review.length ? `<div class="result-review-v10"><small>À revoir</small><p>${review.slice(0,4).map(m => escapeV10(m.word || m.answer)).join(" · ")}</p></div>` : `<div class="result-review-v10 success"><small>À revoir</small><p>Aucun mot ajouté aux erreurs.</p></div>`}`;
+    panel.querySelector(".exercise-finish-actions")?.before(details);
+
+    gameState.analyticsV10.exercisesCompleted += 1;
+    gameState.analyticsV10.historyCompleted += 1;
+    if (errors === 0) gameState.analyticsV10.perfectExercises += 1;
+    const label = historyContextV10.type === "sound" ? `Son ${historyContextV10.key}` : `Lettre ${historyContextV10.key}`;
+    logActivityV10("history",`${label} · ${historyContextV10.exercise.replace("exercise","Exercice ")}`,`${score}/2 étoiles · ${errors} erreur${errors>1?"s":""}`);
+    advanceDailyV10("exercise",1);
+    if (errors === 0) advanceDailyV10("perfect",1);
+
+    const nextPart = historyContextV10.exercise === "exercise1" ? "exercise2" : historyContextV10.exercise === "exercise2" ? "exercise3" : null;
+    if (nextPart) setResumeV10({kind:"history",type:historyContextV10.type,key:historyContextV10.key,part:nextPart});
+    else setResumeV10(null);
+    safeSaveV10();
+    checkAchievementsV10(true);
+  }
+
+  const lessonContentV10 = document.getElementById("lessonContent");
+  if (lessonContentV10) {
+    new MutationObserver(() => setTimeout(decorateHistoryResultV10,0))
+      .observe(lessonContentV10,{childList:true,subtree:true});
+  }
+
+  /* ---------------------------------------------------------
+     REFAIRE MES ERREURS — FILTRES, CORRECTION GROUPÉE, AUDIO
+  --------------------------------------------------------- */
+  function mistakesV10(){
+    return Object.values(gameState.mistakes||{}).sort((a,b) => Number(a.createdAt||0)-Number(b.createdAt||0));
+  }
+  function mistakeCategoryV10(m){
+    if (m.kind === "math") return "math";
+    if (m.kind === "word" || m.kind === "missing" || m.kind === "phrase") return "word";
+    if (m.lessonType === "sound") return "sound";
+    return "letter";
+  }
+  function filteredMistakesV10(){
+    const list = mistakesV10();
+    let filtered = mistakeFilterV10 === "all"
+      ? list
+      : list.filter(m => mistakeCategoryV10(m) === mistakeFilterV10);
+
+    if (mistakeFilterV10 === "math" && mathMistakeOperationFilterV12 !== "all") {
+      filtered = filtered.filter(m => mathMistakeOperationFilterV12 === "mixed"
+        ? String(m.sourceMode || "") === "mixed"
+        : String(m.operation || "mixed") === mathMistakeOperationFilterV12);
+    }
+    return filtered;
+  }
+  function mistakeLabelV10(m){
+    if (m.kind === "math") {
+      const labels = {
+        addition:"Addition",
+        subtraction:"Soustraction",
+        comparison:"Comparaison",
+        problem:"Petit problème",
+        mixed:"Calcul mélangé"
+      };
+      return labels[String(m.operation || "mixed")] || "Calcul";
+    }
+    return m.lessonType === "sound" ? `Son ${m.lessonKey}` : `Lettre ${m.lessonKey}`;
+  }
+  function mistakeDescriptionV10(m){
+    if (m.kind === "math") {
+      const detail = m.story || m.equation || m.prompt || "Calcul à corriger";
+      return `${detail}${m.givenAnswer !== undefined && m.givenAnswer !== "" ? ` · réponse donnée : ${m.givenAnswer}` : ""}`;
+    }
+    if (m.kind === "practice") {
+      const detail = m.display || m.answer || "Question à refaire";
+      return `${m.practiceTitle || "Exercice complémentaire"} · ${detail}`;
+    }
+    if (m.kind === "match") return `Associer le son « ${m.answer} » à la bonne syllabe`;
+    if (m.kind === "missing") return `Compléter « ${m.word || "le mot"} » avec ${m.answer}`;
+    if (m.kind === "phrase") return `Reconnaître la phrase « ${m.answer} »`;
+    return `Reconnaître le mot « ${m.answer} »`;
+  }
+  function mistakeIconV10(m){
+    if (m.kind === "math") {
+      if (m.operation === "subtraction") return "−";
+      if (m.operation === "comparison") return "≷";
+      if (m.operation === "problem") return "🧩";
+      if (m.operation === "mixed") return "±";
+      return "＋";
+    }
+    if (m.kind === "practice") return "🎯";
+    if (m.kind === "match") return "♫";
+    if (m.kind === "missing") return "□";
+    if (m.kind === "phrase") return "💬";
+    return "Aa";
+  }
+
+  function refreshMistakeCountsV10(){
+    const count = mistakesV10().length;
+    setText("homeMistakeCount",`${count} erreur${count>1?"s":""}`);
+    setText("mistakeReviewCount",`${count} erreur${count>1?"s":""}`);
+    setText("mistakeRecoveredCount",Number(gameState.mistakesRecovered||0));
+    const button = document.getElementById("mistakeReviewHomeButton");
+    button?.classList.toggle("no-mistakes",count===0);
+  }
+
+  window.setMistakeFilterV10 = function(filter){
+    mistakeFilterV10 = ["all","letter","sound","word","math"].includes(filter) ? filter : "all";
+    if (mistakeFilterV10 !== "math") mathMistakeOperationFilterV12 = "all";
+    document.querySelectorAll(".mistake-filters-v10 button").forEach(button => {
+      button.classList.toggle("active",button.dataset.filter === mistakeFilterV10);
+    });
+    renderMistakeListV10();
+  };
+
+  window.setMathMistakeOperationFilterV12 = function(filter){
+    const allowed = ["all","addition","subtraction","comparison","problem","mixed"];
+    mathMistakeOperationFilterV12 = allowed.includes(filter) ? filter : "all";
+    document.querySelectorAll("#mathMistakeFiltersV12 button").forEach(button => {
+      button.classList.toggle("active",button.dataset.operation === mathMistakeOperationFilterV12);
+    });
+    renderMistakeListV10();
+  };
+
+  function renderMistakeListV10(){
+    activeMistakeV10 = null;
+    selectedMistakeV10 = "";
+    refreshMistakeCountsV10();
+    const content = document.getElementById("mistakeReviewContent");
+    const list = filteredMistakesV10();
+    const allCount = mistakesV10().length;
+    const correctAll = document.getElementById("correctAllMistakesV10");
+    if (correctAll) correctAll.disabled = allCount === 0;
+    if (!content) return;
+
+    let mathFilters = document.getElementById("mathMistakeFiltersV12");
+    if (mistakeFilterV10 === "math") {
+      if (!mathFilters) {
+        mathFilters = document.createElement("div");
+        mathFilters.id = "mathMistakeFiltersV12";
+        mathFilters.className = "math-mistake-filters-v12";
+        content.parentElement?.insertBefore(mathFilters,content);
+      }
+      const operations = [
+        ["all","Tous les calculs"],
+        ["addition","Additions"],
+        ["subtraction","Soustractions"],
+        ["comparison","Comparaisons"],
+        ["problem","Problèmes"],
+        ["mixed","Mélangés"]
+      ];
+      mathFilters.innerHTML = operations.map(([key,label]) =>
+        `<button data-operation="${key}" class="${mathMistakeOperationFilterV12===key?"active":""}" onclick="setMathMistakeOperationFilterV12('${key}')">${label}</button>`
+      ).join("");
+      mathFilters.classList.remove("hidden");
+    } else if (mathFilters) {
+      mathFilters.classList.add("hidden");
+    }
+
+    if (!list.length) {
+      content.innerHTML = `<div class="mistake-empty">
+        <div class="mistake-empty-icon">✓</div>
+        <h3>${allCount ? "Aucune erreur dans ce filtre" : "Tout est corrigé !"}</h3>
+        <p>${allCount ? "Choisis un autre filtre pour voir les erreurs restantes." : "Tu n’as plus aucune erreur à refaire. Bravo !"}</p>
+      </div>`;
+      return;
+    }
+    content.innerHTML = list.map(m => `<article class="mistake-card v10-mistake-card" data-kind="${escapeV10(mistakeCategoryV10(m))}">
+      <div class="mistake-card-icon">${mistakeIconV10(m)}</div>
+      <div><small>${escapeV10(mistakeLabelV10(m))}</small><strong>${escapeV10(mistakeDescriptionV10(m))}</strong><p>${Number(m.attempts||1)} essai${Number(m.attempts||1)>1?"s":""}</p></div>
+      <button onclick="openMistakeQuestion('${escapeV10(m.id)}')">Corriger</button>
+    </article>`).join("");
+  }
+
+  function lessonForMistakeV10(m){
+    return m.lessonType === "sound" ? soundLessons[m.lessonKey] : letterLessons[m.lessonKey];
+  }
+  function choicesWithAnswerV11(answer,pool,maxChoices=4){
+    const expected = String(answer ?? "");
+    const seen = new Set([normalizeV10(expected)]);
+    const distractors = [];
+    shuffleArray([...(pool || [])]).forEach(value => {
+      const normalized = normalizeV10(value);
+      if (!normalized || seen.has(normalized) || distractors.length >= maxChoices-1) return;
+      seen.add(normalized);
+      distractors.push(String(value));
+    });
+    return shuffleArray([expected,...distractors]);
+  }
+  function buildMistakeChoicesV10(m){
+    if (m.kind === "practice") {
+      return choicesWithAnswerV11(m.answer,Array.isArray(m.choices) ? m.choices : [],4);
+    }
+    if (m.kind === "match") {
+      const values = lessonForMistakeV10(m)?.syllables?.map(item => item.syllable) || [];
+      return choicesWithAnswerV11(m.answer,values,4);
+    }
+    if (m.kind === "missing") {
+      const pool = m.lessonType === "sound" ? [...soundKeys].map(String) : [...ALL_LETTERS_V10];
+      return choicesWithAnswerV11(m.answer,pool,4);
+    }
+    if (m.kind === "phrase") {
+      const phrases = lessonForMistakeV10(m)?.phrases || [];
+      return choicesWithAnswerV11(m.answer,phrases,4);
+    }
+    const words = lessonForMistakeV10(m)?.words?.map(item => item.word) || [];
+    const globalWords = Object.values(letterLessons).flatMap(lesson => lesson.words||[]).map(item => item.word);
+    return choicesWithAnswerV11(m.answer,[...words,...globalWords],4);
+  }
+  function blankMistakeWordV10(word,target){
+    const raw = String(word||"");
+    const lower = raw.toLocaleLowerCase("fr");
+    const wanted = String(target||"").toLocaleLowerCase("fr");
+    const index = lower.indexOf(wanted);
+    if (index<0) return `□${escapeV10(raw)}`;
+    return `${escapeV10(raw.slice(0,index))}<span>${"□".repeat(Math.max(1,wanted.length))}</span>${escapeV10(raw.slice(index+wanted.length))}`;
+  }
+
+  window.openMistakeQuestion = function(id){
+    const mistake = gameState.mistakes?.[id];
+    if (!mistake) return renderMistakeListV10();
+    activeMistakeV10 = mistake;
+    selectedMistakeV10 = "";
+    selectedMistakeTokensV10 = [];
+    const content = document.getElementById("mistakeReviewContent");
+    if (!content) return;
+
+    if (mistake.kind === "math") {
+      const isChoice = mistake.answerType === "choice" || mistake.answerType === "comparison";
+      const choices = mistake.answerType === "comparison"
+        ? [">","<","="]
+        : Array.isArray(mistake.choices) && mistake.choices.length
+          ? choicesWithAnswerV11(mistake.correct ?? mistake.answer,mistake.choices,4)
+          : [];
+      const questionText = mistake.story || mistake.prompt || "Résous ce calcul.";
+      const equation = mistake.equation
+        ? `<div class="math-mistake-equation-v12">${escapeV10(mistake.equation)}</div>`
+        : "";
+      const answerArea = isChoice
+        ? `<div class="mistake-review-choices math-choice-review-v12">${choices.map(choice => `<button onclick="selectMistakeAnswerV10(this,decodeURIComponent('${encV10(choice)}'))">${escapeV10(choice)}</button>`).join("")}</div>`
+        : `<input id="mistakeMathAnswerV10" type="number" inputmode="numeric" placeholder="Ta réponse">`;
+
+      content.innerHTML = `<section class="mistake-question-panel v10-question-panel math-mistake-question-v12">
+        <div class="mistake-question-top"><small>${escapeV10(mistakeLabelV10(mistake))}</small><span>À corriger</span></div>
+        <h3 class="mistake-question-title">${escapeV10(questionText)}</h3>
+        ${equation}
+        ${answerArea}
+        <div id="mistakeMessageV10" class="message"></div>
+        <div class="mistake-review-actions"><button onclick="validateMistakeAnswer()">Valider</button><button class="secondary" onclick="renderMistakeListV10()">Retour à la liste</button></div>
+      </section>`;
+      document.getElementById("mistakeMathAnswerV10")?.addEventListener("keydown",event => event.key==="Enter" && validateMistakeAnswer());
+      if (gameState.appSettingsV10.autoRead && questionText) setTimeout(() => speak(questionText),180);
+      return;
+    }
+
+    if (mistake.kind === "practice") {
+      const tokenValues = Array.isArray(mistake.tokens) ? mistake.tokens : [];
+      const choices = buildMistakeChoicesV10(mistake);
+      let answerArea = "";
+      if (mistake.input) {
+        answerArea = `<input id="mistakePracticeInputV10" class="practice-input-v9" autocomplete="off" placeholder="Écris ta réponse">`;
+      } else if (tokenValues.length) {
+        answerArea = `<div id="mistakeBuiltAnswerV10" class="practice-built-answer-v9 empty">Clique sur les éléments dans le bon ordre.</div>
+          <div class="mistake-review-choices practice-token-choices-v11">${shuffleArray(tokenValues.map(String)).map((value,index) => `<button onclick="selectMistakeTokenV10(this,decodeURIComponent('${encV10(value)}'))" data-token-index="${index}">${escapeV10(value)}</button>`).join("")}</div>
+          <button class="secondary" onclick="undoMistakeTokenV10()">Effacer le dernier</button>`;
+      } else {
+        answerArea = `<div class="mistake-review-choices">${choices.map(choice => `<button onclick="selectMistakeAnswerV10(this,decodeURIComponent('${encV10(choice)}'))">${escapeV10(choice)}</button>`).join("")}</div>`;
+      }
+
+      content.innerHTML = `<section class="mistake-question-panel v10-question-panel">
+        <div class="mistake-question-top"><small>${escapeV10(mistakeLabelV10(mistake))}</small><span>Exercice complémentaire</span></div>
+        <h3 class="mistake-question-title">${escapeV10(mistake.practiceTitle || "Exercice à refaire")}</h3>
+        <p>${escapeV10(mistake.prompt || "Réponds à la question.")}</p>
+        ${mistake.display ? `<div class="mistake-missing-word-v10">${escapeV10(mistake.display)}</div>` : ""}
+        ${mistake.audio ? `<button class="btn primary" onclick="speak(decodeURIComponent('${encV10(mistake.audio)}'))">🔊 Écouter</button>` : ""}
+        ${answerArea}
+        <div id="mistakeMessageV10" class="message"></div>
+        <div class="mistake-review-actions"><button onclick="validateMistakeAnswer()">Valider</button><button class="secondary" onclick="renderMistakeListV10()">Retour à la liste</button></div>
+      </section>`;
+      document.getElementById("mistakePracticeInputV10")?.addEventListener("keydown",event => event.key==="Enter" && validateMistakeAnswer());
+      if (gameState.appSettingsV10.autoRead) {
+        const spoken = mistake.audio ? `${mistake.prompt || ""} ${mistake.audio}` : (mistake.prompt || "");
+        if (spoken.trim()) setTimeout(() => speak(spoken),180);
+      }
+      return;
+    }
+
+    const choices = buildMistakeChoicesV10(mistake);
+    const prompt = mistake.kind === "match" ? "Écoute puis choisis la bonne syllabe"
+      : mistake.kind === "missing" ? "Écoute puis complète le mot"
+      : mistake.kind === "phrase" ? "Écoute puis choisis la bonne phrase"
+      : "Écoute puis choisis le bon mot";
+    const display = mistake.kind === "missing"
+      ? `<div class="mistake-missing-word-v10">${blankMistakeWordV10(mistake.word,mistake.answer)}</div>` : "";
+    content.innerHTML = `<section class="mistake-question-panel v10-question-panel">
+      <div class="mistake-question-top"><small>${escapeV10(mistakeLabelV10(mistake))}</small><span>Une étoile à récupérer</span></div>
+      <h3 class="mistake-question-title">${escapeV10(prompt)}</h3>
+      ${display}
+      <button class="btn primary" onclick="speak(decodeURIComponent('${encV10(mistake.audio||mistake.word||mistake.answer)}'))">🔊 Écouter</button>
+      <div class="mistake-review-choices">${choices.map(choice => `<button onclick="selectMistakeAnswerV10(this,decodeURIComponent('${encV10(choice)}'))">${escapeV10(choice)}</button>`).join("")}</div>
+      <div id="mistakeMessageV10" class="message"></div>
+      <div class="mistake-review-actions"><button onclick="validateMistakeAnswer()">Valider</button><button class="secondary" onclick="renderMistakeListV10()">Retour à la liste</button></div>
+    </section>`;
+    if (gameState.appSettingsV10.autoRead) setTimeout(() => speak(mistake.audio||mistake.word||mistake.answer),180);
+  };
+
+  window.selectMistakeAnswerV10 = function(button,value){
+    selectedMistakeV10 = value;
+    document.querySelectorAll(".mistake-review-choices button").forEach(item => item.classList.remove("selected"));
+    button?.classList.add("selected");
+  };
+
+  function updateMistakeBuiltAnswerV10(){
+    const box = document.getElementById("mistakeBuiltAnswerV10");
+    if (!box) return;
+    box.textContent = selectedMistakeTokensV10.length
+      ? selectedMistakeTokensV10.map(item => item.value).join(" ")
+      : "Clique sur les éléments dans le bon ordre.";
+    box.classList.toggle("empty",selectedMistakeTokensV10.length === 0);
+  }
+  window.selectMistakeTokenV10 = function(button,value){
+    if (!button || button.disabled) return;
+    selectedMistakeTokensV10.push({value,button});
+    button.disabled = true;
+    updateMistakeBuiltAnswerV10();
+  };
+  window.undoMistakeTokenV10 = function(){
+    const last = selectedMistakeTokensV10.pop();
+    if (last?.button) last.button.disabled = false;
+    updateMistakeBuiltAnswerV10();
+  };
+
+  function recoverMistakeRewardV10(mistake){
+    let gainedStars = 0;
+    let gainedCoins = 0;
+    if (mistake.kind === "math") {
+      gameState.coins = Number(gameState.coins||0)+1;
+      gainedCoins = 1;
+    } else if (mistake.exerciseName && mistake.lessonType && mistake.lessonKey) {
+      const progress = getProgress(mistake.lessonType,mistake.lessonKey);
+      if (!progress.exerciseRewards) progress.exerciseRewards = {};
+      const current = Math.max(0,Math.min(2,Number(progress.exerciseRewards[mistake.exerciseName]||0)));
+      if (current < 2) {
+        progress.exerciseRewards[mistake.exerciseName] = current+1;
+        progress[mistake.exerciseName+"Stars"] = current+1;
+        gameState.stars = Number(gameState.stars||0)+1;
+        gameState.totalStarsEarned = Number(gameState.totalStarsEarned||0)+1;
+        gainedStars = 1;
+      }
+    }
+    return {gainedStars,gainedCoins};
+  }
+
+  window.validateMistakeAnswer = function(){
+    const mistake = activeMistakeV10;
+    if (!mistake) return renderMistakeListV10();
+    const message = document.getElementById("mistakeMessageV10");
+    let answer = selectedMistakeV10;
+    if (mistake.kind === "math" && mistake.answerType !== "choice" && mistake.answerType !== "comparison") {
+      answer = document.getElementById("mistakeMathAnswerV10")?.value || "";
+    }
+    if (mistake.kind === "practice" && mistake.input) {
+      answer = document.getElementById("mistakePracticeInputV10")?.value || "";
+    } else if (mistake.kind === "practice" && Array.isArray(mistake.tokens) && mistake.tokens.length) {
+      answer = selectedMistakeTokensV10.map(item => item.value).join(" ");
+    }
+    if (!String(answer).trim()) {
+      if (message) { message.textContent="Choisis ou écris une réponse."; message.className="message bad"; }
+      return;
+    }
+    const expected = mistake.correct ?? mistake.answer;
+    const mathAnswerMatches = mistake.kind === "math"
+      ? (mistake.answerType === "comparison"
+          ? String(answer).trim() === String(expected).trim()
+          : mistake.answerType === "choice"
+            ? normalizeV10(answer) === normalizeV10(expected)
+            : Number(answer) === Number(expected))
+      : normalizeV10(answer) === normalizeV10(expected);
+    if (!mathAnswerMatches) {
+      mistake.attempts = Number(mistake.attempts||0)+1;
+      mistake.updatedAt = now();
+      safeSaveV10();
+      window.LumiAudio?.playWrong?.();
+      if (message) { message.textContent="Essaie encore."; message.className="message bad"; }
+      return;
+    }
+
+    const reward = recoverMistakeRewardV10(mistake);
+    delete gameState.mistakes[mistake.id];
+    gameState.mistakesRecovered = Number(gameState.mistakesRecovered||0)+1;
+    logActivityV10("mistake","Erreur corrigée",mistakeDescriptionV10(mistake));
+    advanceDailyV10("mistake",1);
+    safeSaveV10();
+    updateGameUi();
+    window.LumiAudio?.playCorrect?.();
+    if (!gameState.appSettingsV10.reducedMotion) createConfetti();
+    refreshMistakeCountsV10();
+
+    const content = document.getElementById("mistakeReviewContent");
+    const remaining = filteredMistakesV10();
+    if (content) content.innerHTML = `<section class="mistake-corrected-v10">
+      <div>✓</div><h3>Erreur corrigée !</h3>
+      <p>${mistake.kind === "practice" ? "Cette erreur complémentaire est retirée de ta liste." : reward.gainedStars ? "Tu récupères 1 étoile." : reward.gainedCoins ? "Tu gagnes 1 pièce." : "Ton meilleur résultat était déjà complet."}</p>
+      <div class="mistake-review-actions">
+        ${remaining.length ? `<button onclick="openMistakeQuestion('${escapeV10(remaining[0].id)}')">Corriger l’erreur suivante</button>` : ""}
+        <button class="secondary" onclick="renderMistakeListV10()">Retour à la liste</button>
+      </div>
+    </section>`;
+    const notice = document.getElementById("mistakeRecoveryNoticeV10");
+    if (notice) {
+      notice.textContent = mistake.kind === "practice" ? "Erreur complémentaire corrigée" : reward.gainedStars ? "+1 étoile récupérée" : reward.gainedCoins ? "+1 pièce" : "Erreur supprimée";
+      notice.classList.remove("hidden");
+      setTimeout(() => notice.classList.add("hidden"),1800);
+    }
+    activeMistakeV10 = null;
+    selectedMistakeV10 = "";
+    selectedMistakeTokensV10 = [];
+    if (correctionQueueV10 && remaining.length) {
+      setTimeout(() => openMistakeQuestion(remaining[0].id),650);
+    } else if (!remaining.length) correctionQueueV10 = false;
+    checkAchievementsV10(true);
+  };
+
+  window.renderMistakeListV10 = renderMistakeListV10;
+  window.correctAllMistakesV10 = function(){
+    const list = filteredMistakesV10();
+    if (!list.length) return showToast("Aucune erreur dans cette liste.");
+    correctionQueueV10 = true;
+    openMistakeQuestion(list[0].id);
+  };
+  window.showMistakeReview = function(){
+    window.LumiAudio?.stopBackground?.(true);
+    hideAllScreens();
+    document.getElementById("mistakeReviewScreen")?.classList.remove("hidden");
+    correctionQueueV10 = false;
+    renderMistakeListV10();
+  };
+
+  /* ---------------------------------------------------------
+     TABLEAU DE BORD PARENTS
+  --------------------------------------------------------- */
+  function completedLettersV10(){ return activeLetters.filter(letter => isLessonCompleted("letter",letter)).length; }
+  function completedSoundsV10(){ return soundKeys.filter(sound => isLessonCompleted("sound",sound)).length; }
+  function completedWorldsV10(){
+    return Object.values(letterChapters).filter(chapter => chapter.letters.every(letter => isLessonCompleted("letter",letter))).length;
+  }
+  function difficultyDataV10(){
+    const groups = new Map();
+    mistakesV10().forEach(m => {
+      const mathOperation = m.kind === "math" ? String(m.operation || "mixed") : "";
+      const key = m.kind === "math"
+        ? `math:${mathOperation}`
+        : `${m.lessonType||"general"}:${m.lessonKey||"?"}`;
+      const mathLabels = {
+        addition:"Additions",
+        subtraction:"Soustractions",
+        comparison:"Comparaisons",
+        problem:"Petits problèmes",
+        mixed:"Calculs mélangés"
+      };
+      const label = m.kind === "math"
+        ? (mathLabels[mathOperation] || "Calculs")
+        : m.lessonType === "sound" ? `Son ${m.lessonKey}` : `Lettre ${m.lessonKey}`;
+      const old = groups.get(key) || {label,count:0,examples:[]};
+      old.count += Number(m.attempts||1);
+      const example = m.kind === "math" ? (m.equation || m.prompt || m.answer) : m.answer;
+      if (example && !old.examples.includes(example)) old.examples.push(example);
+      groups.set(key,old);
+    });
+    Object.entries(gameState.practiceStatsV10||{}).forEach(([key,stats]) => {
+      const errors = Number(stats.totalErrors||0);
+      if (!errors) return;
+      const [mode,value] = key.split(":");
+      const label = mode === "sound" ? `Son ${value}` : `Lettre ${value}`;
+      const old = groups.get(key) || {label,count:0,examples:[]};
+      old.count += Math.min(errors,10);
+      groups.set(key,old);
+    });
+    return [...groups.values()].sort((a,b) => b.count-a.count).slice(0,4);
+  }
+  function relativeTimeV10(timestamp){
+    const diff = Math.max(0,now()-Number(timestamp||0));
+    const min = Math.floor(diff/60000);
+    if (min<1) return "à l’instant";
+    if (min<60) return `il y a ${min} min`;
+    const hours = Math.floor(min/60);
+    if (hours<24) return `il y a ${hours} h`;
+    const days = Math.floor(hours/24);
+    return `il y a ${days} jour${days>1?"s":""}`;
+  }
+
+  function renderParentDashboardV10(){
+    ensureV10State();
+    setText("parentPlayTimeV10",formatDurationV10(gameState.analyticsV10.sessionSeconds));
+    setText("parentExercisesV10",gameState.analyticsV10.exercisesCompleted);
+    setText("parentCorrectedV10",Number(gameState.mistakesRecovered||0));
+    setText("parentSoundsMasteredV10",`${completedSoundsV10()} / ${soundKeys.length}`);
+
+    const difficulties = document.getElementById("parentDifficultiesV10");
+    const data = difficultyDataV10();
+    if (difficulties) difficulties.innerHTML = data.length ? data.map((item,index) => `<article>
+      <span>${index+1}</span><div><strong>${escapeV10(item.label)}</strong><p>${item.examples.length ? `À retravailler : ${item.examples.slice(0,3).map(escapeV10).join(" · ")}` : "Plusieurs essais ont été nécessaires."}</p></div><b>${item.count}</b>
+    </article>`).join("") : `<div class="parent-empty-v10">Aucune difficulté importante détectée pour le moment.</div>`;
+
+    const recent = document.getElementById("parentRecentActivitiesV10");
+    const activities = gameState.analyticsV10.activityLog.slice(0,7);
+    if (recent) recent.innerHTML = activities.length ? activities.map(item => `<article>
+      <span>${item.kind === "mistake" ? "↻" : item.kind === "practice" ? "★" : item.kind === "daily" ? "🔥" : "✓"}</span>
+      <div><strong>${escapeV10(item.title)}</strong><p>${escapeV10(item.detail)}</p></div><time>${relativeTimeV10(item.at)}</time>
+    </article>`).join("") : `<div class="parent-empty-v10">Les prochaines activités apparaîtront ici.</div>`;
+
+    const kingdoms = document.getElementById("parentKingdomProgressV10");
+    if (kingdoms) kingdoms.innerHTML = Object.entries(letterChapters).map(([chapterNumber,chapter]) => {
+      const completed = chapter.letters.filter(letter => isLessonCompleted("letter",letter)).length;
+      const stars = chapter.letters.reduce((sum,letter) => sum + Number(getTotalLessonStars("letter",letter)||0),0);
+      const max = chapter.letters.length*6;
+      return `<article><div><small>Royaume ${escapeV10(chapterNumber)}</small><strong>${escapeV10(chapter.name || chapter.shortName || `Royaume ${chapterNumber}`)}</strong><span>${completed}/${chapter.letters.length} lettres · ${stars}/${max} étoiles</span></div><i><u style="width:${chapter.letters.length ? completed/chapter.letters.length*100 : 0}%"></u></i></article>`;
+    }).join("");
+    renderParentMathV12();
+  }
+
+
+  /* ---------------------------------------------------------
+     MATHS V12 — ÉTAT, STATISTIQUES, REPRISE ET ESPACE PARENTS
+  --------------------------------------------------------- */
+  const MATH_OPERATION_LABELS_V12 = {
+    addition:"Additions",
+    subtraction:"Soustractions",
+    comparison:"Comparaisons",
+    problem:"Petits problèmes",
+    mixed:"Calculs mélangés"
+  };
+
+  function ensureMathStatsV12(){
+    if (!gameState.mathStatsV12) {
+      gameState.mathStatsV12 = {
+        version:"12.0",
+        totalQuestions:0,
+        correct:0,
+        wrong:0,
+        seriesCompleted:0,
+        perfectSeries:0,
+        bestStreak:0,
+        currentStreak:0,
+        streakBonuses:0,
+        byOperation:{},
+        difficultNumbers:{},
+        recentErrors:[]
+      };
+    }
+    const stats = gameState.mathStatsV12;
+    ["totalQuestions","correct","wrong","seriesCompleted","perfectSeries","bestStreak","currentStreak","streakBonuses"]
+      .forEach(key => stats[key] = Number(stats[key] || 0));
+    if (!stats.byOperation) stats.byOperation = {};
+    if (!stats.difficultNumbers) stats.difficultNumbers = {};
+    if (!Array.isArray(stats.recentErrors)) stats.recentErrors = [];
+
+    ["addition","subtraction","comparison","problem","mixed"].forEach(operation => {
+      if (!stats.byOperation[operation]) {
+        stats.byOperation[operation] = {
+          questions:0,correct:0,wrong:0,series:0,bestScore:0,lastPlayedAt:0
+        };
+      }
+      const item = stats.byOperation[operation];
+      ["questions","correct","wrong","series","bestScore","lastPlayedAt"]
+        .forEach(key => item[key] = Number(item[key] || 0));
+    });
+
+    if (!gameState.mathSettingsV12) {
+      gameState.mathSettingsV12 = {
+        operation:"addition",
+        max:15,
+        allowMissing:true,
+        questionCount:10,
+        adaptive:true,
+        visualAid:"objects"
+      };
+    }
+    return stats;
+  }
+
+  function mathOperationStatsV12(operation){
+    const stats = ensureMathStatsV12();
+    const key = MATH_OPERATION_LABELS_V12[operation] ? operation : "mixed";
+    return stats.byOperation[key];
+  }
+
+  function mathAccuracyV12(item){
+    return item?.questions ? Math.round(Number(item.correct||0)/Number(item.questions||1)*100) : 0;
+  }
+
+  function recordMathAnswerV12(payload = {}){
+    const stats = ensureMathStatsV12();
+    const operation = MATH_OPERATION_LABELS_V12[payload.operation] ? payload.operation : "mixed";
+    const item = mathOperationStatsV12(operation);
+    const correct = Boolean(payload.correct);
+    const coins = correct ? Math.max(0,Number(payload.coins||0)) : 0;
+
+    stats.totalQuestions += 1;
+    item.questions += 1;
+    item.lastPlayedAt = now();
+    gameState.totalAnswers = Number(gameState.totalAnswers||0)+1;
+
+    let streakBonus = 0;
+    if (correct) {
+      stats.correct += 1;
+      item.correct += 1;
+      stats.currentStreak += 1;
+      stats.bestStreak = Math.max(stats.bestStreak,stats.currentStreak);
+      gameState.correctAnswers = Number(gameState.correctAnswers||0)+1;
+      gameState.coins = Number(gameState.coins||0)+coins;
+
+      if (stats.currentStreak > 0 && stats.currentStreak % 5 === 0) {
+        streakBonus = 5;
+        stats.streakBonuses += 1;
+        gameState.coins += streakBonus;
+      }
+    } else {
+      stats.wrong += 1;
+      item.wrong += 1;
+      stats.currentStreak = 0;
+      const numbers = [payload.a,payload.b,payload.result,payload.correctAnswer]
+        .map(Number).filter(Number.isFinite);
+      numbers.forEach(number => {
+        stats.difficultNumbers[number] = Number(stats.difficultNumbers[number]||0)+1;
+      });
+      stats.recentErrors.unshift({
+        operation,
+        prompt:String(payload.prompt||payload.equation||"Calcul"),
+        equation:String(payload.equation||""),
+        givenAnswer:String(payload.givenAnswer??""),
+        expected:String(payload.correctAnswer??""),
+        at:now()
+      });
+      stats.recentErrors = stats.recentErrors.slice(0,20);
+    }
+
+    gameState.lastActivity = "math";
+    safeSaveV10();
+    updateGameUi();
+    return {
+      streak:stats.currentStreak,
+      bestStreak:stats.bestStreak,
+      streakBonus
+    };
+  }
+
+  function recordMathSeriesV12(summary = {}){
+    const stats = ensureMathStatsV12();
+    const operation = MATH_OPERATION_LABELS_V12[summary.operation] ? summary.operation : "mixed";
+    const item = mathOperationStatsV12(operation);
+    const total = Math.max(1,Number(summary.total||1));
+    const score = Math.max(0,Number(summary.score||0));
+    const percent = Math.round(score/total*100);
+
+    stats.seriesCompleted += 1;
+    item.series += 1;
+    item.bestScore = Math.max(item.bestScore,percent);
+    if (Number(summary.errors||0) === 0) stats.perfectSeries += 1;
+
+    gameState.analyticsV10.exercisesCompleted += 1;
+    if (Number(summary.errors||0) === 0) gameState.analyticsV10.perfectExercises += 1;
+    logActivityV10(
+      "math",
+      `${MATH_OPERATION_LABELS_V12[operation]} · série terminée`,
+      `${score}/${total} du premier coup · ${Number(summary.errors||0)} erreur${Number(summary.errors||0)>1?"s":""}`
+    );
+    advanceDailyV10("exercise",1);
+    if (Number(summary.errors||0) === 0) advanceDailyV10("perfect",1);
+    setResumeV10(null);
+    safeSaveV10();
+    checkAchievementsV10(true);
+  }
+
+  function saveMathSettingsV12(settings = {}){
+    ensureMathStatsV12();
+    gameState.mathSettingsV12 = {
+      ...gameState.mathSettingsV12,
+      ...settings
+    };
+    safeSaveV10();
+    return {...gameState.mathSettingsV12};
+  }
+
+  function saveMathResumeV12(data = {}){
+    setResumeV10({kind:"math",...data});
+  }
+
+  function rememberMathMistakeV12(data = {}){
+    const correct = data.correct ?? data.answer;
+    const operation = MATH_OPERATION_LABELS_V12[data.operation] ? data.operation : "mixed";
+    const stable = normalizeV10(data.equation || data.story || data.prompt || `${operation}-${correct}`);
+    return window.rememberMistake?.({
+      ...data,
+      id:data.id || `math:${operation}:${data.questionType||"calculation"}:${stable}`,
+      kind:"math",
+      operation,
+      answer:String(correct ?? ""),
+      correct:String(correct ?? "")
+    });
+  }
+
+  window.LumiKidsMathBridge = {
+    getSettings(){
+      ensureMathStatsV12();
+      return {...gameState.mathSettingsV12};
+    },
+    saveSettings:saveMathSettingsV12,
+    saveResume:saveMathResumeV12,
+    rememberMistake:rememberMathMistakeV12,
+    recordAnswer:recordMathAnswerV12,
+    recordSeries:recordMathSeriesV12,
+    getStats(){
+      ensureMathStatsV12();
+      return JSON.parse(JSON.stringify(gameState.mathStatsV12));
+    },
+    countMistakes(operation = "all"){
+      return mistakesV10().filter(m => {
+        if (m.kind !== "math") return false;
+        if (operation === "all") return true;
+        if (operation === "mixed") return String(m.sourceMode||"") === "mixed";
+        return String(m.operation||"mixed") === operation;
+      }).length;
+    }
+  };
+
+  function renderParentMathV12(){
+    ensureMathStatsV12();
+    const parent = document.getElementById("parentScreen");
+    if (!parent) return;
+
+    let section = document.getElementById("parentMathProgressV12");
+    if (!section) {
+      section = document.createElement("section");
+      section.id = "parentMathProgressV12";
+      section.className = "parent-section-v10 parent-math-section-v12";
+      const kingdomSection = document.getElementById("parentKingdomProgressV10")?.closest(".parent-section-v10");
+      if (kingdomSection) kingdomSection.before(section);
+      else parent.appendChild(section);
+    }
+
+    const stats = gameState.mathStatsV12;
+    const overall = stats.totalQuestions ? Math.round(stats.correct/stats.totalQuestions*100) : 0;
+    const difficult = Object.entries(stats.difficultNumbers||{})
+      .sort((a,b) => Number(b[1])-Number(a[1]))
+      .slice(0,5);
+
+    section.innerHTML = `
+      <div class="parent-section-title-v10">
+        <div><small>Univers maths</small><h3>Progression en calcul</h3></div>
+        <span class="parent-math-overall-v12">${overall}% de réussite</span>
+      </div>
+      <div class="parent-math-summary-v12">
+        <article><span>🧮</span><strong>${stats.totalQuestions}</strong><small>questions répondues</small></article>
+        <article><span>🏁</span><strong>${stats.seriesCompleted}</strong><small>séries terminées</small></article>
+        <article><span>🔥</span><strong>${stats.bestStreak}</strong><small>meilleure série</small></article>
+        <article><span>✓</span><strong>${stats.perfectSeries}</strong><small>séries sans faute</small></article>
+      </div>
+      <div class="parent-math-operations-v12">
+        ${Object.entries(MATH_OPERATION_LABELS_V12).map(([key,label]) => {
+          const item = stats.byOperation[key];
+          const accuracy = mathAccuracyV12(item);
+          return `<article>
+            <div><strong>${label}</strong><span>${item.correct}/${item.questions} · meilleur score ${item.bestScore}%</span></div>
+            <i><u style="width:${accuracy}%"></u></i><b>${accuracy}%</b>
+          </article>`;
+        }).join("")}
+      </div>
+      <div class="parent-math-difficult-v12">
+        <small>Nombres qui demandent le plus d’attention</small>
+        <div>${difficult.length
+          ? difficult.map(([number,count]) => `<span><b>${escapeV10(number)}</b><em>${count} difficulté${Number(count)>1?"s":""}</em></span>`).join("")
+          : "<p>Aucune difficulté marquée pour le moment.</p>"}
+        </div>
+      </div>`;
+  }
+
+  const oldShowParentV10 = window.showParentDashboard;
+  if (typeof oldShowParentV10 === "function") {
+    window.showParentDashboard = function(...args){
+      const result = oldShowParentV10.apply(this,args);
+      renderParentDashboardV10();
+      return result;
+    };
+  }
+
+  /* ---------------------------------------------------------
+     SUCCÈS ET RÉCOMPENSES
+  --------------------------------------------------------- */
+  const ACHIEVEMENTS_V10 = [
+    {key:"first",icon:"★",title:"Premier pas",text:"Réussir un premier exercice",test:() => Number(gameState.correctAnswers||0)>=1},
+    {key:"ten",icon:"10",title:"Bien lancé",text:"Terminer 10 séries",test:() => Number(gameState.analyticsV10.exercisesCompleted||0)>=10},
+    {key:"fifty",icon:"50",title:"Super élève",text:"Terminer 50 séries",test:() => Number(gameState.analyticsV10.exercisesCompleted||0)>=50},
+    {key:"stars",icon:"⭐",title:"Collectionneur",text:"Gagner 100 étoiles",test:() => Number(gameState.totalStarsEarned||gameState.stars||0)>=100},
+    {key:"reader",icon:"Aa",title:"Petit lecteur",text:"Maîtriser 3 lettres",test:() => completedLettersV10()>=3},
+    {key:"streak",icon:"🔥",title:"Régulier",text:"Atteindre une série de 3 jours",test:() => Number(gameState.dailyStreakV10.count||0)>=3},
+    {key:"perfect",icon:"✓",title:"Sans faute",text:"Réussir 5 séries sans erreur",test:() => Number(gameState.analyticsV10.perfectExercises||0)>=5},
+    {key:"corrector",icon:"↻",title:"Grand correcteur",text:"Corriger 10 erreurs",test:() => Number(gameState.mistakesRecovered||0)>=10},
+    {key:"explorer",icon:"🗺️",title:"Explorateur",text:"Terminer les 5 royaumes",test:() => completedWorldsV10()>=5},
+    {key:"grandReader",icon:"📚",title:"Grand lecteur",text:"Maîtriser toutes les lettres de l’histoire",test:() => completedLettersV10()>=activeLetters.length},
+    {key:"soundMaster",icon:"ch",title:"Maître des sons",text:"Maîtriser tous les sons composés",test:() => completedSoundsV10()>=soundKeys.length},
+    {key:"trainer",icon:"🎯",title:"Entraîneur",text:"Découvrir 25 exercices complémentaires",test:() => Number(gameState.analyticsV10.practiceCompleted||0)>=25}
+  ];
+
+  function showAchievementToastV10(item){
+    const toast = document.getElementById("achievementToastV10");
+    if (!toast) return;
+    toast.innerHTML = `<span>${item.icon}</span><div><small>Nouveau succès</small><strong>${escapeV10(item.title)}</strong><p>${escapeV10(item.text)}</p></div>`;
+    toast.classList.remove("hidden");
+    clearTimeout(showAchievementToastV10.timer);
+    showAchievementToastV10.timer = setTimeout(() => toast.classList.add("hidden"),4200);
+    window.LumiAudio?.playChestReward?.();
+  }
+
+  function checkAchievementsV10(showNotice=false){
+    ensureV10State();
+    const newly = [];
+    ACHIEVEMENTS_V10.forEach(item => {
+      const unlocked = Boolean(item.test());
+      if (unlocked && !gameState.achievements[item.key]) {
+        gameState.achievements[item.key] = true;
+        newly.push(item);
+      }
+    });
+    safeSaveV10();
+    if (showNotice) {
+      const item = newly.find(value => !gameState.achievementNotifiedV10[value.key]);
+      if (item) {
+        gameState.achievementNotifiedV10[item.key] = true;
+        safeSaveV10();
+        showAchievementToastV10(item);
+      }
+    }
+    return newly;
+  }
+
+  const oldUnlockAchievementsV10 = window.unlockAchievements;
+  unlockAchievements = function(){
+    if (typeof oldUnlockAchievementsV10 === "function") oldUnlockAchievementsV10();
+    checkAchievementsV10(false);
+  };
+
+  renderAchievements = function(){
+    checkAchievementsV10(false);
+    const grid = document.getElementById("achievementsGrid");
+    if (!grid) return;
+    grid.innerHTML = ACHIEVEMENTS_V10.map(item => {
+      const unlocked = Boolean(gameState.achievements[item.key]);
+      return `<article class="achievement ${unlocked?"":"locked"}"><div class="achievement-icon">${item.icon}</div><strong>${escapeV10(item.title)}</strong><p>${escapeV10(item.text)}</p>${unlocked?'<span class="achievement-unlocked-v10">Débloqué</span>':''}</article>`;
+    }).join("");
+  };
+
+  function renderRewardsOverviewV10(){
+    checkAchievementsV10(false);
+    const unlocked = ACHIEVEMENTS_V10.filter(item => gameState.achievements[item.key]).length;
+    setText("rewardUnlockedCountV10",`${unlocked} / ${ACHIEVEMENTS_V10.length}`);
+    setText("rewardPerfectCountV10",Number(gameState.analyticsV10.perfectExercises||0));
+    setText("rewardCorrectedCountV10",Number(gameState.mistakesRecovered||0));
+    const streak = Number(gameState.dailyStreakV10.count||0);
+    setText("rewardDailyStreakV10",`${streak} jour${streak>1?"s":""}`);
+  }
+  const oldShowRewardsV10 = window.showRewards;
+  if (typeof oldShowRewardsV10 === "function") {
+    window.showRewards = function(...args){
+      const result = oldShowRewardsV10.apply(this,args);
+      renderRewardsOverviewV10();
+      renderAchievements();
+      return result;
+    };
+  }
+
+  /* ---------------------------------------------------------
+     REPRISE INTELLIGENTE
+  --------------------------------------------------------- */
+  const oldOpenLessonV10 = window.openLesson;
+  if (typeof oldOpenLessonV10 === "function") {
+    window.openLesson = function(key,type,...rest){
+      const result = oldOpenLessonV10.call(this,key,type,...rest);
+      setResumeV10({kind:"history",type:type||"letter",key,part:null});
+      return result;
+    };
+  }
+
+  const fallbackContinueV10 = window.continueLearning;
+  continueLearning = function(){
+    const resume = gameState.resumeV10;
+    if (resume?.kind === "practice") return resumePracticeV10();
+    if (resume?.kind === "history" && resume.key) {
+      openLesson(resume.key,resume.type||"letter");
+      if (resume.part) setTimeout(() => showLessonPart(resume.part,true),80);
+      return;
+    }
+    if (resume?.kind === "math") {
+      if (typeof window.resumeMathsV12 === "function") return window.resumeMathsV12(resume);
+      if (typeof showMath === "function") return showMath();
+    }
+    return typeof fallbackContinueV10 === "function" ? fallbackContinueV10() : showReadingHome();
+  };
+
+  /* ---------------------------------------------------------
+     SYNCHRONISATION GLOBALE DE L'INTERFACE
+  --------------------------------------------------------- */
+  const oldUpdateGameUiV10 = updateGameUi;
+  updateGameUi = function(){
+    const result = oldUpdateGameUiV10();
+    refreshMistakeCountsV10();
+    updateResumeUiV10();
+    renderDailyChallenge();
+    renderRewardsOverviewV10();
+    if (!document.getElementById("parentScreen")?.classList.contains("hidden")) renderParentDashboardV10();
+    return result;
+  };
+
+  // La copie miniature du texte du livre n'est plus utilisée sur aucun écran.
+  document.querySelector(".storybook-mini-copy")?.remove();
+
+  ensureMathStatsV12();
+  refreshMistakeCountsV10();
+  updateResumeUiV10();
+  renderDailyChallenge();
+  renderRewardsOverviewV10();
+  applyAppSettingsV10();
+  checkAchievementsV10(false);
+  safeSaveV10();
+
+  // Message de retour après une absence significative.
+  if (previousVisitV10 && now()-previousVisitV10 > 2*60*60*1000) {
+    const message = gameState.resumeV10 ? `Bon retour ${gameState.childName||"Champion"} ! ${resumeLabelV10(gameState.resumeV10)}.` : `Bon retour ${gameState.childName||"Champion"} !`;
+    setTimeout(() => showToast(message),700);
+  }
+})();
+
+
+/* =========================================================
+   LUMIKIDS V13 — AVENTURE COMPLÈTE
+========================================================= */
+(function installLumiKidsAdventureV13(){
+  "use strict";
+  if (window.__lumikidsAdventureV13Installed) return;
+  window.__lumikidsAdventureV13Installed = true;
+
+  const VERSION = "13.0";
+  const ALL_LETTERS_V13 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const PRACTICE_TYPES_COUNT_V13 = 11;
+  let achievementFilterV13 = "all";
+
+  const escV13 = value => String(value ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+  function dayKeyV13(date = new Date()){
+    return [
+      date.getFullYear(),
+      String(date.getMonth()+1).padStart(2,"0"),
+      String(date.getDate()).padStart(2,"0")
+    ].join("-");
+  }
+
+  function saveV13(){
+    try { saveGameState(); } catch {}
+  }
+
+  function ensureV13State(){
+    if (!gameState.achievements) gameState.achievements = {};
+    if (!gameState.achievementNotifiedV13) gameState.achievementNotifiedV13 = {};
+    if (!gameState.dailyChestV13) {
+      gameState.dailyChestV13 = {
+        date:"",
+        claimed:false,
+        amount:0,
+        openedCount:0,
+        lastClaimAt:0
+      };
+    }
+    gameState.dailyChestV13.openedCount = Number(gameState.dailyChestV13.openedCount||0);
+    if (!gameState.guardianV13) {
+      gameState.guardianV13 = {
+        unlocked:false,
+        shown:false,
+        completedAt:0
+      };
+    }
+    if (!gameState.v13) gameState.v13 = {version:VERSION};
+    gameState.v13.version = VERSION;
+  }
+
+  function chapterEntriesV13(){
+    return Object.entries(letterChapters || {}).map(([number,chapter]) => [Number(number),chapter]);
+  }
+
+  function lessonCompletedV13(type,key){
+    try { return Boolean(isLessonCompleted(type,key)); }
+    catch { return Boolean(gameState.learningProgress?.[type === "sound" ? "sounds" : "letters"]?.[key]?.completed); }
+  }
+
+  function completedLettersV13(){
+    return activeLetters.filter(letter => lessonCompletedV13("letter",letter)).length;
+  }
+  function completedSoundsV13(){
+    return soundKeys.filter(sound => lessonCompletedV13("sound",sound)).length;
+  }
+  function completedWorldsV13(){
+    return chapterEntriesV13().filter(([,chapter]) =>
+      chapter.letters.every(letter => lessonCompletedV13("letter",letter))
+    ).length;
+  }
+
+  function chapterStarsV13(chapter){
+    return chapter.letters.reduce((sum,letter) => {
+      const p = gameState.learningProgress?.letters?.[letter] || {};
+      const rewards = p.exerciseRewards || {};
+      return sum + ["exercise1","exercise2","exercise3"].reduce((subtotal,name) => {
+        return subtotal + Math.max(0,Math.min(2,Number(rewards[name] ?? p[name+"Stars"] ?? 0)));
+      },0);
+    },0);
+  }
+
+  function practiceCompletedCountV13(mode,key){
+    const stats = gameState.practiceStatsV10?.[`${mode}:${key}`];
+    return Object.keys(stats?.completedTypes || {}).length;
+  }
+
+  function practiceMasteryV13(){
+    const letterDone = ALL_LETTERS_V13.filter(key =>
+      practiceCompletedCountV13("letter",key) >= PRACTICE_TYPES_COUNT_V13
+    ).length;
+    const soundDone = soundKeys.filter(key =>
+      practiceCompletedCountV13("sound",key) >= PRACTICE_TYPES_COUNT_V13
+    ).length;
+    return {
+      mastered:letterDone+soundDone,
+      total:ALL_LETTERS_V13.length+soundKeys.length,
+      completedActivities:[
+        ...ALL_LETTERS_V13.map(key => practiceCompletedCountV13("letter",key)),
+        ...soundKeys.map(key => practiceCompletedCountV13("sound",key))
+      ].reduce((sum,value)=>sum+value,0),
+      totalActivities:(ALL_LETTERS_V13.length+soundKeys.length)*PRACTICE_TYPES_COUNT_V13
+    };
+  }
+
+  function mathModesV13(){
+    const stats = gameState.mathStatsV12?.byOperation || {};
+    const keys = ["addition","subtraction","comparison","problem","mixed"];
+    return {
+      completed:keys.filter(key => Number(stats[key]?.series||0)>0).length,
+      total:keys.length
+    };
+  }
+
+  function analyticsV13(){
+    return gameState.analyticsV10 || {
+      exercisesCompleted:0,perfectExercises:0,practiceCompleted:0,
+      sessionSeconds:0,activityLog:[]
+    };
+  }
+
+  function guardianRequirementsV13(){
+    const practice = practiceMasteryV13();
+    const math = mathModesV13();
+    const requirements = [
+      {
+        key:"worlds",
+        label:"Les 5 royaumes sont terminés",
+        value:completedWorldsV13(),
+        target:chapterEntriesV13().length || 5
+      },
+      {
+        key:"sounds",
+        label:"Tous les sons composés sont maîtrisés",
+        value:completedSoundsV13(),
+        target:soundKeys.length
+      },
+      {
+        key:"practice",
+        label:"Toutes les leçons complémentaires sont maîtrisées",
+        value:practice.mastered,
+        target:practice.total
+      },
+      {
+        key:"math",
+        label:"Chaque mode de maths a été terminé",
+        value:math.completed,
+        target:math.total
+      },
+      {
+        key:"finale",
+        label:"La grande cinématique est terminée",
+        value:gameState.finalCinematic?.completed ? 1 : 0,
+        target:1
+      }
+    ];
+    requirements.forEach(item => item.done = item.value >= item.target);
+    return requirements;
+  }
+
+  function guardianEligibleV13(){
+    return guardianRequirementsV13().every(item => item.done);
+  }
+
+  const ACHIEVEMENTS_V13 = [
+    {key:"first",category:"lecture",icon:"★",title:"Premier pas",text:"Réussir une première question",test:()=>Number(gameState.correctAnswers||0)>=1},
+    {key:"firstLetterV13",category:"lecture",icon:"A",title:"Première lettre",text:"Terminer une première lettre",test:()=>completedLettersV13()>=1},
+    {key:"firstChapterV13",category:"aventure",icon:"📖",title:"Premier chapitre",text:"Terminer le premier royaume",test:()=>completedWorldsV13()>=1},
+    {key:"reader",category:"lecture",icon:"Aa",title:"Petit lecteur",text:"Maîtriser 3 lettres",test:()=>completedLettersV13()>=3},
+    {key:"grandReader",category:"lecture",icon:"📚",title:"Grand lecteur",text:"Maîtriser toutes les lettres de l’histoire",test:()=>completedLettersV13()>=activeLetters.length},
+    {key:"soundMaster",category:"lecture",icon:"ch",title:"Maître des sons",text:"Maîtriser tous les sons composés",test:()=>completedSoundsV13()>=soundKeys.length},
+    {key:"trainer",category:"lecture",icon:"🎯",title:"Entraîneur",text:"Terminer 25 exercices complémentaires",test:()=>Number(analyticsV13().practiceCompleted||0)>=25},
+    {key:"practiceMasterV13",category:"lecture",icon:"🏅",title:"Maître de l’entraînement",text:"Maîtriser toutes les leçons complémentaires",test:()=>practiceMasteryV13().mastered>=practiceMasteryV13().total},
+    {key:"ten",category:"progression",icon:"10",title:"Bien lancé",text:"Terminer 10 séries",test:()=>Number(analyticsV13().exercisesCompleted||0)>=10},
+    {key:"fifty",category:"progression",icon:"50",title:"Super élève",text:"Terminer 50 séries",test:()=>Number(analyticsV13().exercisesCompleted||0)>=50},
+    {key:"stars",category:"progression",icon:"⭐",title:"Collectionneur",text:"Gagner 100 étoiles",test:()=>Number(gameState.totalStarsEarned||gameState.stars||0)>=100},
+    {key:"stars300V13",category:"progression",icon:"🌟",title:"Ciel étincelant",text:"Gagner 300 étoiles",test:()=>Number(gameState.totalStarsEarned||gameState.stars||0)>=300},
+    {key:"coins100V13",category:"progression",icon:"💰",title:"Petit trésor",text:"Posséder 100 pièces",test:()=>Number(gameState.coins||0)>=100},
+    {key:"perfect",category:"progression",icon:"✓",title:"Sans faute",text:"Réussir 5 séries sans erreur",test:()=>Number(analyticsV13().perfectExercises||0)>=5},
+    {key:"perfect10V13",category:"progression",icon:"💯",title:"Précision parfaite",text:"Réussir 10 séries sans erreur",test:()=>Number(analyticsV13().perfectExercises||0)>=10},
+    {key:"corrector",category:"progression",icon:"↻",title:"Grand correcteur",text:"Corriger 10 erreurs",test:()=>Number(gameState.mistakesRecovered||0)>=10},
+    {key:"streak",category:"quotidien",icon:"🔥",title:"Régulier",text:"Atteindre une série de 3 jours",test:()=>Number(gameState.dailyStreakV10?.count||0)>=3},
+    {key:"streak7V13",category:"quotidien",icon:"7",title:"Une semaine magique",text:"Atteindre une série de 7 jours",test:()=>Number(gameState.dailyStreakV10?.count||0)>=7},
+    {key:"dailyTreasureV13",category:"quotidien",icon:"🎁",title:"Chercheur de trésors",text:"Ouvrir 7 coffres quotidiens",test:()=>Number(gameState.dailyChestV13?.openedCount||0)>=7},
+    {key:"explorer",category:"aventure",icon:"🗺️",title:"Explorateur",text:"Terminer les 5 royaumes",test:()=>completedWorldsV13()>=5},
+    {key:"orionV13",category:"aventure",icon:"🦌",title:"Ami d’Orion",text:"Terminer la grande cinématique",test:()=>Boolean(gameState.finalCinematic?.completed)},
+    {key:"mathStarterV13",category:"maths",icon:"➕",title:"Premier calcul",text:"Terminer une série de maths",test:()=>Number(gameState.mathStatsV12?.seriesCompleted||0)>=1},
+    {key:"additionV13",category:"maths",icon:"+",title:"Champion des additions",text:"Obtenir au moins 80 % en additions",test:()=>Number(gameState.mathStatsV12?.byOperation?.addition?.bestScore||0)>=80},
+    {key:"subtractionV13",category:"maths",icon:"−",title:"Champion des soustractions",text:"Obtenir au moins 80 % en soustractions",test:()=>Number(gameState.mathStatsV12?.byOperation?.subtraction?.bestScore||0)>=80},
+    {key:"comparisonV13",category:"maths",icon:">",title:"Grand comparateur",text:"Obtenir au moins 80 % en comparaisons",test:()=>Number(gameState.mathStatsV12?.byOperation?.comparison?.bestScore||0)>=80},
+    {key:"problemV13",category:"maths",icon:"🧩",title:"Résolveur de problèmes",text:"Obtenir au moins 80 % aux petits problèmes",test:()=>Number(gameState.mathStatsV12?.byOperation?.problem?.bestScore||0)>=80},
+    {key:"mathExplorerV13",category:"maths",icon:"🔢",title:"Explorateur des nombres",text:"Terminer chaque mode de maths",test:()=>mathModesV13().completed>=mathModesV13().total},
+    {key:"guardianV13",category:"aventure",icon:"👑",title:"Gardien des Étoiles",text:"Terminer toute l’aventure LumiKids",test:()=>guardianEligibleV13()}
+  ];
+
+  function showAchievementToastV13(item){
+    const toast = document.getElementById("achievementToastV10");
+    if (!toast) return;
+    toast.innerHTML = `<span>${item.icon}</span><div><small>Nouveau succès</small><strong>${escV13(item.title)}</strong><p>${escV13(item.text)}</p></div>`;
+    toast.classList.remove("hidden");
+    clearTimeout(showAchievementToastV13.timer);
+    showAchievementToastV13.timer = setTimeout(()=>toast.classList.add("hidden"),4400);
+    window.LumiAudio?.playChestReward?.();
+  }
+
+  function checkAchievementsV13(showNotice=false){
+    ensureV13State();
+    const newly = [];
+    ACHIEVEMENTS_V13.forEach(item => {
+      if (item.test() && !gameState.achievements[item.key]) {
+        gameState.achievements[item.key] = true;
+        newly.push(item);
+      }
+    });
+    saveV13();
+    if (showNotice) {
+      const item = newly.find(entry => !gameState.achievementNotifiedV13[entry.key]);
+      if (item) {
+        gameState.achievementNotifiedV13[item.key] = true;
+        saveV13();
+        showAchievementToastV13(item);
+      }
+    }
+    return newly;
+  }
+
+  window.setAchievementFilterV13 = function(filter){
+    achievementFilterV13 = ["all","lecture","maths","aventure","progression","quotidien"].includes(filter) ? filter : "all";
+    document.querySelectorAll(".achievement-toolbar-v13 button").forEach(button => {
+      button.classList.toggle("active",button.dataset.filter === achievementFilterV13);
+    });
+    renderAchievements();
+  };
+
+  renderAchievements = function(){
+    ensureV13State();
+    checkAchievementsV13(false);
+    const grid = document.getElementById("achievementsGrid");
+    if (!grid) return;
+
+    let toolbar = document.getElementById("achievementToolbarV13");
+    if (!toolbar) {
+      toolbar = document.createElement("div");
+      toolbar.id = "achievementToolbarV13";
+      toolbar.className = "achievement-toolbar-v13";
+      toolbar.innerHTML = [
+        ["all","Tout"],["lecture","Lecture"],["maths","Maths"],
+        ["aventure","Aventure"],["progression","Progression"],["quotidien","Quotidien"]
+      ].map(([key,label]) => `<button data-filter="${key}" onclick="setAchievementFilterV13('${key}')">${label}</button>`).join("");
+      grid.before(toolbar);
+    }
+
+    let progress = document.getElementById("achievementProgressV13");
+    if (!progress) {
+      progress = document.createElement("section");
+      progress.id = "achievementProgressV13";
+      progress.className = "achievement-progress-v13";
+      toolbar.before(progress);
+    }
+
+    const unlocked = ACHIEVEMENTS_V13.filter(item => gameState.achievements[item.key]).length;
+    progress.innerHTML = `<div><span>Collection de succès</span><strong>${unlocked} / ${ACHIEVEMENTS_V13.length}</strong></div><i><span style="width:${unlocked/ACHIEVEMENTS_V13.length*100}%"></span></i>`;
+    setText("rewardUnlockedCountV10",`${unlocked} / ${ACHIEVEMENTS_V13.length}`);
+
+    document.querySelectorAll(".achievement-toolbar-v13 button").forEach(button => {
+      button.classList.toggle("active",button.dataset.filter === achievementFilterV13);
+    });
+
+    const visible = ACHIEVEMENTS_V13.filter(item =>
+      achievementFilterV13 === "all" || item.category === achievementFilterV13
+    );
+    grid.innerHTML = visible.map(item => {
+      const isUnlocked = Boolean(gameState.achievements[item.key]);
+      const isNew = isUnlocked && !gameState.achievementNotifiedV13[item.key];
+      return `<article class="achievement ${isUnlocked?"":"locked"} ${isNew?"v13-new":""}">
+        <div class="achievement-icon">${item.icon}</div>
+        <strong>${escV13(item.title)}</strong>
+        <p>${escV13(item.text)}</p>
+        ${isUnlocked?'<span class="achievement-unlocked-v10">Débloqué</span>':""}
+      </article>`;
+    }).join("");
+  };
+
+  /* ---------------------------------------------------------
+     COFFRE QUOTIDIEN
+  --------------------------------------------------------- */
+  function ensureDailyChestV13(){
+    ensureV13State();
+    const today = dayKeyV13();
+    const chest = gameState.dailyChestV13;
+    if (chest.date !== today) {
+      const seed = today.replace(/\D/g,"").split("").reduce((sum,value)=>sum+Number(value),0);
+      const rewards = [10,12,15,18,20,25];
+      chest.date = today;
+      chest.claimed = false;
+      chest.amount = rewards[seed % rewards.length];
+      chest.lastClaimAt = 0;
+      saveV13();
+    }
+    return chest;
+  }
+
+  function ensureDailyChestUiV13(){
+    const daily = document.getElementById("dailyChallengeCard");
+    if (daily && !document.getElementById("dailyChestCardV13")) {
+      daily.insertAdjacentHTML("afterend",`
+        <button id="dailyChestCardV13" class="daily-chest-v13" onclick="openDailyChestV13()">
+          <span class="daily-chest-icon-v13">🎁</span>
+          <span><strong>Coffre quotidien</strong><p id="dailyChestTextV13">Un nouveau trésor t’attend.</p></span>
+          <b id="dailyChestStatusV13">Ouvrir</b>
+        </button>`);
+    }
+    if (!document.getElementById("dailyChestOverlayV13")) {
+      document.body.insertAdjacentHTML("beforeend",`
+        <div id="dailyChestOverlayV13" class="v13-overlay hidden">
+          <section class="daily-chest-modal-v13" role="dialog" aria-modal="true" aria-labelledby="dailyChestTitleV13">
+            <button class="v13-close" onclick="closeDailyChestV13()" aria-label="Fermer">×</button>
+            <div id="dailyChestBigV13" class="daily-chest-big-v13">🎁</div>
+            <small>Récompense du jour</small>
+            <h2 id="dailyChestTitleV13">Ton coffre est prêt !</h2>
+            <p id="dailyChestDescriptionV13">Ouvre-le pour découvrir ton trésor.</p>
+            <div id="dailyChestRewardV13" class="daily-chest-reward-v13 hidden"></div>
+            <button id="dailyChestClaimV13" class="primary" onclick="claimDailyChestV13()">Ouvrir le coffre</button>
+          </section>
+        </div>`);
+    }
+  }
+
+  function renderDailyChestV13(){
+    ensureDailyChestUiV13();
+    const chest = ensureDailyChestV13();
+    const card = document.getElementById("dailyChestCardV13");
+    const text = document.getElementById("dailyChestTextV13");
+    const status = document.getElementById("dailyChestStatusV13");
+    card?.classList.toggle("claimed",chest.claimed);
+    card?.classList.toggle("claimable",!chest.claimed);
+    if (text) text.textContent = chest.claimed ? "Reviens demain pour un nouveau trésor." : "Un nouveau trésor t’attend aujourd’hui.";
+    if (status) status.textContent = chest.claimed ? "Récupéré ✓" : "Ouvrir";
+  }
+
+  window.openDailyChestV13 = function(){
+    ensureDailyChestUiV13();
+    const chest = ensureDailyChestV13();
+    const overlay = document.getElementById("dailyChestOverlayV13");
+    const reward = document.getElementById("dailyChestRewardV13");
+    const button = document.getElementById("dailyChestClaimV13");
+    const title = document.getElementById("dailyChestTitleV13");
+    const description = document.getElementById("dailyChestDescriptionV13");
+    overlay?.classList.remove("hidden");
+    if (reward) {
+      reward.classList.toggle("hidden",!chest.claimed);
+      reward.textContent = chest.claimed ? `🪙 ${chest.amount} pièces récupérées` : "";
+    }
+    if (button) {
+      button.disabled = chest.claimed;
+      button.textContent = chest.claimed ? "Déjà récupéré aujourd’hui" : "Ouvrir le coffre";
+    }
+    if (title) title.textContent = chest.claimed ? "Coffre déjà ouvert" : "Ton coffre est prêt !";
+    if (description) description.textContent = chest.claimed
+      ? "Ton prochain trésor arrivera demain."
+      : "Ouvre-le pour découvrir ton trésor.";
+  };
+
+  window.closeDailyChestV13 = function(){
+    document.getElementById("dailyChestOverlayV13")?.classList.add("hidden");
+  };
+
+  window.claimDailyChestV13 = function(){
+    const chest = ensureDailyChestV13();
+    if (chest.claimed) return;
+    const icon = document.getElementById("dailyChestBigV13");
+    const button = document.getElementById("dailyChestClaimV13");
+    icon?.classList.add("opening");
+    if (button) button.disabled = true;
+    window.LumiAudio?.playChestOpen?.();
+
+    setTimeout(() => {
+      chest.claimed = true;
+      chest.openedCount = Number(chest.openedCount||0)+1;
+      chest.lastClaimAt = Date.now();
+      gameState.coins = Number(gameState.coins||0)+Number(chest.amount||0);
+      saveV13();
+      updateGameUi();
+      const reward = document.getElementById("dailyChestRewardV13");
+      reward?.classList.remove("hidden");
+      if (reward) reward.textContent = `🪙 ${chest.amount} pièces gagnées !`;
+      document.getElementById("dailyChestTitleV13").textContent = "Trésor récupéré !";
+      document.getElementById("dailyChestDescriptionV13").textContent = "Reviens demain pour ouvrir un nouveau coffre.";
+      if (button) button.textContent = "Récupéré ✓";
+      window.LumiAudio?.playChestReward?.();
+      if (!document.body.classList.contains("v10-reduced-motion")) createConfetti();
+      animateRewardToCounter?.("coins",chest.amount);
+      renderDailyChestV13();
+      checkAchievementsV13(true);
+    },800);
+  };
+
+  /* ---------------------------------------------------------
+     CARTE DES ROYAUMES
+  --------------------------------------------------------- */
+  renderWorldMap = function(){
+    const path = document.getElementById("worldMapPath");
+    if (!path) return;
+    const entries = chapterEntriesV13();
+    const completed = completedWorldsV13();
+    const uniqueStars = entries.reduce((sum,[,chapter])=>sum+chapterStarsV13(chapter),0);
+    setText("worldMapStars",Number(gameState.stars||0));
+    setText("worldMapCompleted",`${completed} / ${entries.length}`);
+    setText("worldMapUniqueStars",uniqueStars);
+    setText("worldMapMistakes",Object.keys(gameState.mistakes||{}).length);
+    setText("worldMapOrionStars",Number(gameState.finalCinematic?.starsGiven||0));
+
+    path.classList.add("v13-map");
+    path.innerHTML = entries.map(([number,chapter]) => {
+      const doneCount = chapter.letters.filter(letter => lessonCompletedV13("letter",letter)).length;
+      const percent = chapter.letters.length ? Math.round(doneCount/chapter.letters.length*100) : 0;
+      const done = doneCount === chapter.letters.length;
+      let unlocked = true;
+      try { unlocked = Boolean(isLetterChapterUnlocked(number)); } catch {}
+      const stars = chapterStarsV13(chapter);
+      const max = chapter.letters.length*6;
+      const click = unlocked
+        ? `onclick="confirmWorldTravel(${number})"`
+        : `onclick="showToast('Termine le royaume précédent pour le débloquer.')"`; 
+      return `<button class="world-map-card-v13 ${done?"completed":""} ${unlocked?"":"locked"}" ${click}>
+        <span class="world-map-node-v13">${done?"✓":number}</span>
+        <div class="world-map-image-v13" style="background-image:url('${escV13(chapter.background)}')"></div>
+        <div class="world-map-copy-v13">
+          <small>Royaume ${number}</small>
+          <h3>${escV13(chapter.name || chapter.shortName || `Royaume ${number}`)}</h3>
+          <p>${done
+            ? "Royaume restauré : toutes les lettres sont maîtrisées."
+            : unlocked
+              ? "Poursuis l’aventure et retrouve les étoiles restantes."
+              : "Ce royaume sera révélé après le précédent."}</p>
+          <div class="world-map-progress-v13"><span style="width:${percent}%"></span></div>
+          <div class="world-map-meta-v13">
+            <span>✓ ${doneCount}/${chapter.letters.length} lettres</span>
+            <span>⭐ ${stars}/${max}</span>
+            <span>${done?"Royaume terminé":unlocked?"En cours":"Verrouillé"}</span>
+          </div>
+        </div>
+      </button>`;
+    }).join("");
+    revealActiveScreenV13();
+  };
+
+  /* ---------------------------------------------------------
+     PARENTS++ ET RAPPORT PDF
+  --------------------------------------------------------- */
+  function lastSevenDaysV13(){
+    const result = [];
+    const log = analyticsV13().activityLog || [];
+    for (let offset=6;offset>=0;offset--) {
+      const date = new Date();
+      date.setHours(0,0,0,0);
+      date.setDate(date.getDate()-offset);
+      const key = dayKeyV13(date);
+      const count = log.filter(item => dayKeyV13(new Date(Number(item.at||0))) === key).length;
+      result.push({
+        key,
+        label:["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][date.getDay()],
+        count
+      });
+    }
+    return result;
+  }
+
+  function ensureParentV13Ui(){
+    const parent = document.getElementById("parentScreen");
+    if (!parent || document.getElementById("parentActionsV13")) return;
+    const profile = parent.querySelector(".parent-profile");
+    profile?.insertAdjacentHTML("afterend",`
+      <div id="parentActionsV13" class="parent-actions-v13">
+        <button class="report" onclick="printParentReportV13()">🖨️ Imprimer / enregistrer le rapport PDF</button>
+        <button id="parentCertificateButtonV13" class="certificate" onclick="printCertificateV13()">🏅 Diplôme LumiKids</button>
+      </div>`);
+    parent.insertAdjacentHTML("beforeend",`
+      <section id="parentWeekChartV13" class="parent-chart-v13"></section>
+      <section id="parentMasteryChartV13" class="parent-chart-v13"></section>`);
+  }
+
+  function percentV13(value,total){
+    return total ? Math.max(0,Math.min(100,Math.round(value/total*100))) : 0;
+  }
+
+  function renderParentV13(){
+    ensureParentV13Ui();
+    const week = lastSevenDaysV13();
+    const max = Math.max(1,...week.map(item=>item.count));
+    const totalWeek = week.reduce((sum,item)=>sum+item.count,0);
+    const best = [...week].sort((a,b)=>b.count-a.count)[0];
+    const weekBox = document.getElementById("parentWeekChartV13");
+    if (weekBox) {
+      weekBox.innerHTML = `
+        <header><div><small>Activité des 7 derniers jours</small><strong>${totalWeek} activité${totalWeek>1?"s":""}</strong></div><span>Meilleur jour : ${best?.label||"—"}</span></header>
+        <div class="parent-week-bars-v13">${week.map(item => `
+          <div><i style="height:${Math.max(8,item.count/max*125)}px" title="${item.count} activité(s)"></i><b>${item.label}</b></div>
+        `).join("")}</div>`;
+    }
+
+    const practice = practiceMasteryV13();
+    const math = gameState.mathStatsV12 || {};
+    const mathsAccuracy = math.totalQuestions ? Math.round(Number(math.correct||0)/Number(math.totalQuestions||1)*100) : 0;
+    const rows = [
+      ["Lettres",completedLettersV13(),activeLetters.length],
+      ["Sons",completedSoundsV13(),soundKeys.length],
+      ["Entraînement",practice.completedActivities,practice.totalActivities],
+      ["Maths",mathsAccuracy,100],
+      ["Royaumes",completedWorldsV13(),chapterEntriesV13().length]
+    ];
+    const mastery = document.getElementById("parentMasteryChartV13");
+    if (mastery) {
+      mastery.innerHTML = `
+        <header><div><small>Vue d’ensemble</small><strong>Maîtrise par domaine</strong></div><span>${Math.round(rows.reduce((sum,row)=>sum+percentV13(row[1],row[2]),0)/rows.length)} % global</span></header>
+        <div class="parent-mastery-v13">${rows.map(([label,value,total]) => {
+          const pct = percentV13(value,total);
+          return `<div class="parent-mastery-row-v13"><span>${label}</span><i><u style="width:${pct}%"></u></i><b>${pct}%</b></div>`;
+        }).join("")}</div>`;
+    }
+    const certificate = document.getElementById("parentCertificateButtonV13");
+    if (certificate) {
+      certificate.disabled = !gameState.guardianV13?.unlocked;
+      certificate.title = certificate.disabled ? "Termine toute l’aventure pour débloquer le diplôme." : "Imprimer le diplôme";
+    }
+  }
+
+  function reportHtmlV13(){
+    const accuracy = gameState.totalAnswers
+      ? Math.round(Number(gameState.correctAnswers||0)/Number(gameState.totalAnswers||1)*100) : 0;
+    const practice = practiceMasteryV13();
+    const math = gameState.mathStatsV12 || {};
+    const week = lastSevenDaysV13();
+    const difficult = Object.entries(math.difficultNumbers||{}).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Rapport LumiKids</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#23342b;margin:35px}
+        header{padding:24px;border-radius:20px;background:#eaf8ef}
+        h1{margin:0;color:#29945a} h2{margin-top:28px}
+        .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+        .card{padding:15px;border:1px solid #dce8e1;border-radius:14px}
+        .card strong{display:block;font-size:24px}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:10px;border-bottom:1px solid #e5ebe7;text-align:left}
+        .bar{height:10px;background:#e7ede9;border-radius:99px;overflow:hidden}
+        .bar span{display:block;height:100%;background:#43bd79}
+        footer{margin-top:35px;color:#738078;font-size:12px}
+        @media print{button{display:none}}
+      </style></head><body>
+      <header><small>Rapport pédagogique LumiKids</small><h1>${escV13(gameState.childName||"Champion")}</h1><p>Généré le ${new Date().toLocaleDateString("fr-FR")}</p></header>
+      <h2>Résumé</h2><div class="grid">
+        <div class="card"><small>Niveau</small><strong>${Math.floor(Number(gameState.xp||0)/100)+1}</strong></div>
+        <div class="card"><small>Réussite globale</small><strong>${accuracy}%</strong></div>
+        <div class="card"><small>Étoiles gagnées</small><strong>${Number(gameState.totalStarsEarned||gameState.stars||0)}</strong></div>
+        <div class="card"><small>Erreurs corrigées</small><strong>${Number(gameState.mistakesRecovered||0)}</strong></div>
+      </div>
+      <h2>Progression</h2><table>
+        <tr><th>Domaine</th><th>Progression</th><th></th></tr>
+        <tr><td>Lettres de l’histoire</td><td>${completedLettersV13()} / ${activeLetters.length}</td><td><div class="bar"><span style="width:${percentV13(completedLettersV13(),activeLetters.length)}%"></span></div></td></tr>
+        <tr><td>Sons composés</td><td>${completedSoundsV13()} / ${soundKeys.length}</td><td><div class="bar"><span style="width:${percentV13(completedSoundsV13(),soundKeys.length)}%"></span></div></td></tr>
+        <tr><td>Royaumes</td><td>${completedWorldsV13()} / ${chapterEntriesV13().length}</td><td><div class="bar"><span style="width:${percentV13(completedWorldsV13(),chapterEntriesV13().length)}%"></span></div></td></tr>
+        <tr><td>Activités complémentaires</td><td>${practice.completedActivities} / ${practice.totalActivities}</td><td><div class="bar"><span style="width:${percentV13(practice.completedActivities,practice.totalActivities)}%"></span></div></td></tr>
+        <tr><td>Maths</td><td>${Number(math.correct||0)} bonnes réponses / ${Number(math.totalQuestions||0)}</td><td><div class="bar"><span style="width:${math.totalQuestions?Math.round(Number(math.correct||0)/Number(math.totalQuestions||1)*100):0}%"></span></div></td></tr>
+      </table>
+      <h2>Activité des 7 derniers jours</h2>
+      <table><tr>${week.map(item=>`<th>${item.label}</th>`).join("")}</tr><tr>${week.map(item=>`<td>${item.count}</td>`).join("")}</tr></table>
+      <h2>Nombres à revoir</h2><p>${difficult.length ? difficult.map(([number,count])=>`${escV13(number)} (${count})`).join(" · ") : "Aucune difficulté particulière enregistrée."}</p>
+      <footer>LumiKids — Apprendre en jouant. Ce rapport est généré localement à partir de la progression enregistrée sur cet appareil.</footer>
+      <script>setTimeout(()=>window.print(),250)<\/script></body></html>`;
+  }
+
+  window.printParentReportV13 = function(){
+    const popup = window.open("","_blank");
+    if (!popup) return showToast("Autorise les fenêtres contextuelles pour imprimer le rapport.");
+    popup.document.open();
+    popup.document.write(reportHtmlV13());
+    popup.document.close();
+  };
+
+  /* ---------------------------------------------------------
+     ÉCRAN FINAL ET CERTIFICAT
+  --------------------------------------------------------- */
+  function ensureGuardianScreenV13(){
+    const shell = document.querySelector(".game-shell");
+    if (!shell || document.getElementById("guardianScreenV13")) return;
+    shell.insertAdjacentHTML("beforeend",`
+      <div id="guardianScreenV13" class="screen guardian-screen-v13 hidden">
+        <section class="guardian-card-v13">
+          <div class="guardian-crown-v13">👑</div>
+          <small>Grande aventure terminée</small>
+          <h2>Gardien des Étoiles</h2>
+          <p id="guardianMessageV13"></p>
+          <div id="guardianStatsV13" class="guardian-stats-v13"></div>
+          <div id="guardianRequirementsV13" class="guardian-requirements-v13"></div>
+          <div class="guardian-actions-v13">
+            <button class="primary" onclick="printCertificateV13()">🏅 Mon diplôme</button>
+            <button class="secondary" onclick="startFinalCinematic(true)">🎬 Revoir la grande fin</button>
+            <button class="ghost" onclick="showHome()">Retour à l’accueil</button>
+          </div>
+        </section>
+      </div>`);
+  }
+
+  function renderGuardianV13(forcePreview=false){
+    ensureGuardianScreenV13();
+    const eligible = guardianEligibleV13();
+    const requirements = guardianRequirementsV13();
+    const message = document.getElementById("guardianMessageV13");
+    if (message) message.textContent = eligible
+      ? `Bravo ${gameState.childName||"Champion"} ! Tu as restauré tous les royaumes, maîtrisé la lecture et relevé les défis de maths.`
+      : `Aperçu administrateur : certaines étapes restent encore à terminer avant le vrai couronnement.`;
+
+    const stats = document.getElementById("guardianStatsV13");
+    if (stats) stats.innerHTML = `
+      <article><strong>${Number(gameState.totalStarsEarned||gameState.stars||0)}</strong><span>étoiles gagnées</span></article>
+      <article><strong>${Number(analyticsV13().exercisesCompleted||0)}</strong><span>séries terminées</span></article>
+      <article><strong>${Number(gameState.mistakesRecovered||0)}</strong><span>erreurs corrigées</span></article>
+      <article><strong>${Number(gameState.mathStatsV12?.correct||0)}</strong><span>calculs réussis</span></article>`;
+
+    const list = document.getElementById("guardianRequirementsV13");
+    if (list) list.innerHTML = requirements.map(item =>
+      `<div class="${item.done?"done":""}">${item.done?"✓":"○"} ${escV13(item.label)} <b>${item.value}/${item.target}</b></div>`
+    ).join("");
+  }
+
+  window.showGuardianFinaleV13 = function(forcePreview=false){
+    ensureV13State();
+    if (!guardianEligibleV13() && !forcePreview) {
+      return showToast("Le titre de Gardien sera débloqué lorsque toute l’aventure sera terminée.");
+    }
+    ensureGuardianScreenV13();
+    hideAllScreens();
+    renderGuardianV13(forcePreview);
+    document.getElementById("guardianScreenV13")?.classList.remove("hidden");
+    if (!document.body.classList.contains("v10-reduced-motion")) createConfetti();
+  };
+
+  function checkGuardianUnlockV13(showNotice=false){
+    ensureV13State();
+    const eligible = guardianEligibleV13();
+    if (eligible && !gameState.guardianV13.unlocked) {
+      gameState.guardianV13.unlocked = true;
+      gameState.guardianV13.completedAt = Date.now();
+      saveV13();
+      checkAchievementsV13(true);
+      if (showNotice) showToast("Titre débloqué : Gardien des Étoiles !");
+    }
+    renderGuardianHomeBannerV13();
+    return eligible;
+  }
+
+  function ensureGuardianHomeBannerV13(){
+    const home = document.getElementById("homeScreen");
+    if (!home || document.getElementById("guardianHomeBannerV13")) return;
+    const target = home.querySelector(".activity-grid-v3") || home.firstElementChild;
+    target?.insertAdjacentHTML("beforebegin",`
+      <section id="guardianHomeBannerV13" class="guardian-home-banner-v13 hidden">
+        <span>👑</span>
+        <div><strong>Gardien des Étoiles</strong><p>Toute l’aventure LumiKids est terminée.</p></div>
+        <button onclick="showGuardianFinaleV13()">Voir mon couronnement</button>
+      </section>`);
+  }
+
+  function renderGuardianHomeBannerV13(){
+    ensureGuardianHomeBannerV13();
+    document.getElementById("guardianHomeBannerV13")?.classList.toggle("hidden",!gameState.guardianV13?.unlocked);
+  }
+
+  window.printCertificateV13 = function(forcePreview=false){
+    ensureV13State();
+    if (!gameState.guardianV13.unlocked && !forcePreview) {
+      return showToast("Le diplôme sera disponible après avoir terminé toute l’aventure.");
+    }
+    const popup = window.open("","_blank");
+    if (!popup) return showToast("Autorise les fenêtres contextuelles pour imprimer le diplôme.");
+    const date = gameState.guardianV13.completedAt
+      ? new Date(gameState.guardianV13.completedAt).toLocaleDateString("fr-FR")
+      : new Date().toLocaleDateString("fr-FR");
+    popup.document.open();
+    popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Diplôme LumiKids</title>
+      <style>
+        @page{size:A4 landscape;margin:0}
+        *{box-sizing:border-box}
+        body{margin:0;font-family:Georgia,serif;background:#eef7f1}
+        .page{width:297mm;height:210mm;padding:15mm;display:grid;place-items:center}
+        .certificate{width:100%;height:100%;position:relative;padding:18mm;text-align:center;
+          border:7px double #d6aa36;border-radius:8mm;background:
+          radial-gradient(circle at 15% 18%,rgba(255,224,104,.28),transparent 22%),
+          radial-gradient(circle at 85% 82%,rgba(139,112,222,.20),transparent 25%),
+          linear-gradient(135deg,#fffef6,#f1fff5)}
+        .stars{font-size:20px;letter-spacing:8px;color:#d5a82e}
+        small{display:block;margin-top:8mm;letter-spacing:.35em;text-transform:uppercase;color:#4f7760;font-weight:bold}
+        h1{margin:5mm 0 2mm;font-size:23mm;line-height:1;color:#2e9b61}
+        h2{margin:3mm 0;font-size:11mm;color:#503e75}
+        p{font-size:6mm;line-height:1.5;color:#4d5c53}
+        .name{display:inline-block;min-width:130mm;padding:2mm 5mm;border-bottom:2px solid #b48a2b;font-size:12mm;color:#694c18}
+        .stats{margin:8mm auto;display:flex;justify-content:center;gap:12mm;font-family:Arial,sans-serif}
+        .stats div{padding:4mm 7mm;border-radius:4mm;background:rgba(255,255,255,.76)}
+        .stats strong{display:block;font-size:7mm;color:#4f67bd}.stats span{font-size:3.5mm;color:#6f7c75}
+        footer{position:absolute;left:18mm;right:18mm;bottom:12mm;display:flex;justify-content:space-between;color:#7b887f;font-family:Arial,sans-serif;font-size:3.5mm}
+        @media print{body{background:white}}
+      </style></head><body><main class="page"><section class="certificate">
+        <div class="stars">★ ★ ★ ★ ★</div>
+        <small>Diplôme officiel LumiKids</small>
+        <h1>Gardien des Étoiles</h1>
+        <p>Ce diplôme certifie que</p>
+        <div class="name">${escV13(gameState.childName||"Champion")}</div>
+        <h2>a terminé la grande aventure LumiKids</h2>
+        <p>et a aidé Lumi et ses amis à restaurer les cinq royaumes.</p>
+        <div class="stats">
+          <div><strong>${Number(gameState.totalStarsEarned||gameState.stars||0)}</strong><span>étoiles</span></div>
+          <div><strong>${Number(analyticsV13().exercisesCompleted||0)}</strong><span>séries</span></div>
+          <div><strong>${Number(gameState.mistakesRecovered||0)}</strong><span>erreurs corrigées</span></div>
+        </div>
+        <footer><span>Décerné le ${date}</span><span>Orion, Gardien du ciel ✦</span></footer>
+      </section></main><script>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+    popup.document.close();
+  };
+
+  /* ---------------------------------------------------------
+     ANIMATIONS ET OUTILS ADMIN
+  --------------------------------------------------------- */
+  function installMagicLayerV13(){
+    if (document.querySelector(".v13-magic-layer")) return;
+    const layer = document.createElement("div");
+    layer.className = "v13-magic-layer";
+    const symbols = ["✦","★","✧","•"];
+    layer.innerHTML = Array.from({length:18},(_,index) => {
+      const left = (index*37)%100;
+      const duration = 10+(index%7)*1.4;
+      const delay = -(index%9)*1.25;
+      const drift = -45+(index%10)*10;
+      return `<span style="left:${left}%;--duration:${duration}s;--delay:${delay}s;--drift:${drift}px">${symbols[index%symbols.length]}</span>`;
+    }).join("");
+    document.body.appendChild(layer);
+  }
+
+  function revealActiveScreenV13(){
+    const screen = [...document.querySelectorAll(".screen")].find(item => !item.classList.contains("hidden"));
+    if (!screen) return;
+    screen.classList.remove("v13-screen-reveal");
+    void screen.offsetWidth;
+    screen.classList.add("v13-screen-reveal");
+  }
+
+  document.addEventListener("pointerdown",event => {
+    const button = event.target.closest("button");
+    if (!button || document.body.classList.contains("v10-reduced-motion")) return;
+    button.classList.remove("v13-tap-burst");
+    void button.offsetWidth;
+    button.classList.add("v13-tap-burst");
+    setTimeout(()=>button.classList.remove("v13-tap-burst"),380);
+  },{passive:true});
+
+  function ensureAdminV13(){
+    const actions = document.getElementById("adminUnlockedActions");
+    if (!actions || document.getElementById("adminPreviewGuardianV13")) return;
+    actions.insertAdjacentHTML("beforeend",`
+      <button id="adminPreviewGuardianV13" class="admin-v13-button" onclick="showGuardianFinaleV13(true)">👑 Tester l’écran Gardien</button>
+      <button class="admin-v13-button" onclick="resetDailyChestForTestsV13()">🎁 Réinitialiser le coffre du jour</button>
+      <button class="admin-v13-button" onclick="printCertificateV13(true)">🏅 Tester le diplôme</button>`);
+  }
+
+  window.resetDailyChestForTestsV13 = function(){
+    ensureV13State();
+    gameState.dailyChestV13.date = "";
+    gameState.dailyChestV13.claimed = false;
+    saveV13();
+    renderDailyChestV13();
+    openDailyChestV13();
+    showToast("Coffre quotidien réinitialisé pour le test.");
+  };
+
+  /* ---------------------------------------------------------
+     BRANCHEMENTS AUX ÉCRANS EXISTANTS
+  --------------------------------------------------------- */
+  const previousHideAllScreensV13 = window.hideAllScreens;
+  window.hideAllScreens = function(...args){
+    const result = typeof previousHideAllScreensV13 === "function"
+      ? previousHideAllScreensV13.apply(this,args) : undefined;
+    document.getElementById("guardianScreenV13")?.classList.add("hidden");
+    return result;
+  };
+
+  const previousShowRewardsV13 = window.showRewards;
+  window.showRewards = function(...args){
+    const result = typeof previousShowRewardsV13 === "function"
+      ? previousShowRewardsV13.apply(this,args) : undefined;
+    renderAchievements();
+    checkGuardianUnlockV13(false);
+    revealActiveScreenV13();
+    return result;
+  };
+
+  const previousShowParentV13 = window.showParentDashboard;
+  window.showParentDashboard = function(...args){
+    const result = typeof previousShowParentV13 === "function"
+      ? previousShowParentV13.apply(this,args) : undefined;
+    renderParentV13();
+    revealActiveScreenV13();
+    return result;
+  };
+
+  const previousShowWorldV13 = window.showWorldMap;
+  window.showWorldMap = function(...args){
+    const result = typeof previousShowWorldV13 === "function"
+      ? previousShowWorldV13.apply(this,args) : undefined;
+    renderWorldMap();
+    return result;
+  };
+
+  const previousFinishFinalV13 = window.finishFinalCinematic;
+  window.finishFinalCinematic = function(...args){
+    const result = typeof previousFinishFinalV13 === "function"
+      ? previousFinishFinalV13.apply(this,args) : undefined;
+    if (checkGuardianUnlockV13(true)) {
+      setTimeout(()=>showGuardianFinaleV13(),350);
+    }
+    return result;
+  };
+
+  const previousUnlockAchievementsV13 = window.unlockAchievements;
+  window.unlockAchievements = function(...args){
+    const result = typeof previousUnlockAchievementsV13 === "function"
+      ? previousUnlockAchievementsV13.apply(this,args) : undefined;
+    checkAchievementsV13(false);
+    return result;
+  };
+
+  const previousUpdateGameUiV13 = updateGameUi;
+  updateGameUi = function(){
+    const result = previousUpdateGameUiV13();
+    ensureV13State();
+    renderDailyChestV13();
+    renderGuardianHomeBannerV13();
+    checkAchievementsV13(false);
+    checkGuardianUnlockV13(false);
+    if (!document.getElementById("parentScreen")?.classList.contains("hidden")) renderParentV13();
+    return result;
+  };
+  window.updateGameUi = updateGameUi;
+
+  function initV13(){
+    ensureV13State();
+    ensureDailyChestUiV13();
+    ensureParentV13Ui();
+    ensureGuardianScreenV13();
+    ensureGuardianHomeBannerV13();
+    ensureAdminV13();
+    installMagicLayerV13();
+    renderDailyChestV13();
+    checkAchievementsV13(false);
+    checkGuardianUnlockV13(false);
+    renderGuardianHomeBannerV13();
+    saveV13();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded",initV13,{once:true});
+  } else {
+    initV13();
+  }
 })();
